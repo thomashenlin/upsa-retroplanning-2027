@@ -794,18 +794,16 @@ function saveEditInno(id){
 // ─── GLOBAL GANTT ────────────────────────────────────────────────────────────
 function renderGlobal(){
   const total=S.innovations.length;
-  const totalW=S.innovations.reduce((a,inno)=>a+inno.phases.flatMap(p=>p.steps).reduce((b,s)=>b+(parseFloat(s.weeks)||0),0),0);
+  const lateCount = S.innovations.filter(innoHasLateStep).length;
+  const onTimeCount = total - lateCount;
   const ranges=S.innovations.map(i=>innoRange(i));
   const allStarts=ranges.map(r=>r.start).filter(Boolean).sort();
   const allEnds=ranges.map(r=>r.end).filter(Boolean).sort().reverse();
-  const lateCount = S.innovations.filter(innoHasLateStep).length;
 
   document.getElementById('globalKPIs').innerHTML=`
-    <div class="kpi"><div class="lbl">Innovations</div><div class="val">${total}</div></div>
+    <div class="kpi"><div class="lbl">Total innovations 2027</div><div class="val">${total}</div></div>
+    <div class="kpi"><div class="lbl">On time</div><div class="val" style="color:${onTimeCount?'var(--ok)':'var(--tx)'}">${onTimeCount}</div></div>
     <div class="kpi"><div class="lbl">Late</div><div class="val" style="color:${lateCount?'var(--err)':'var(--tx)'}">${lateCount}</div></div>
-    <div class="kpi"><div class="lbl">Total duration</div><div class="val">${totalW}</div><div class="sub">weeks</div></div>
-    <div class="kpi"><div class="lbl">Earliest start</div><div class="val" style="font-size:15px">${allStarts[0]?fmtDate(allStarts[0]):'—'}</div></div>
-    <div class="kpi"><div class="lbl">Latest end</div><div class="val" style="font-size:15px">${allEnds[0]?fmtDate(allEnds[0]):'—'}</div></div>
   `;
 
   if(!S.innovations.length){ document.getElementById('globalGantt').innerHTML='<div class="empty-state"><div class="icon">📅</div><p>No innovations to display</p></div>'; return; }
