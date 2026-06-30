@@ -764,10 +764,20 @@ function openNewInno(){
 }
 function toggleNewInnoOption(key){
   newInnoToggles[key] = !newInnoToggles[key];
-  const card = document.getElementById('toggle-'+key);
-  const state = document.getElementById('toggle-'+key+'-state');
-  card.classList.toggle('on', newInnoToggles[key]);
-  state.textContent = newInnoToggles[key] ? 'On' : 'Off';
+  // Co-marketing always builds on top of the standard template
+  if(key === 'comarketing' && newInnoToggles.comarketing){
+    newInnoToggles.template = true;
+  }
+  applyToggleVisuals();
+}
+function applyToggleVisuals(){
+  ['template','comarketing'].forEach(key=>{
+    const card = document.getElementById('toggle-'+key);
+    const state = document.getElementById('toggle-'+key+'-state');
+    if(!card) return;
+    card.classList.toggle('on', newInnoToggles[key]);
+    state.textContent = newInnoToggles[key] ? 'On' : 'Off';
+  });
 }
 function saveNewInno(){
   const name=document.getElementById('in-name').value.trim();
@@ -775,7 +785,7 @@ function saveNewInno(){
   const useTemplate=newInnoToggles.template;
   const useComarketing=newInnoToggles.comarketing;
   let phases;
-  if(useTemplate){
+  if(useTemplate || useComarketing){
     phases = useComarketing
       ? [deepCopy(COMARKETING_PHASE), ...deepCopy(DEFAULT_PHASES_CORE)]
       : deepCopy(DEFAULT_PHASES_CORE);
