@@ -294,13 +294,15 @@ const STEP_STATUSES = [
   {v:'done',   label:'Done',      cls:'status-done'},
 ];
 
-const DEFAULT_PHASES = [
-  {id:'ph1', name:'CO-MARKETING & SUPPLY AGREEMENT', color:'#1a5fb4', collapsed:false,
+const COMARKETING_PHASE = {
+  id:'ph1', name:'CO-MARKETING & SUPPLY AGREEMENT', color:'#1a5fb4', collapsed:false,
     steps:[
       {id:'s1',name:'Amendment signature',note:'',weeks:1,status:'todo',owner:'Thomas'},
       {id:'s2',name:'Co-marketing & supply agreement',note:'',weeks:4,status:'todo',owner:'Spirig'},
       {id:'s3',name:'Signatures for co-marketing form',note:'',weeks:1,status:'todo',owner:'Thomas'},
-    ]},
+    ]};
+
+const DEFAULT_PHASES_CORE = [
   {id:'ph2', name:'SWISSMEDIC PROCESS', color:'#eda100', collapsed:false,
     steps:[
       {id:'s4',name:'Assessment',note:'',weeks:4,status:'todo',owner:'Swissmedic'},
@@ -352,7 +354,7 @@ async function loadState(){
     innovations:[{
       id:'inno1', name:'Optifen Dolo Duo (example)', category:'Co-marketing Spirig', resp:'Grégoire',
       color:'#4a3aa7', mode:'backward', anchorDate:'2027-06-01',
-      phases: deepCopy(DEFAULT_PHASES)
+      phases: [deepCopy(COMARKETING_PHASE), ...deepCopy(DEFAULT_PHASES_CORE)]
     }],
     selectedId:'inno1'
   };
@@ -722,8 +724,17 @@ function openNewInno(){
       <label style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;cursor:pointer;background:var(--s1)">
         <input type="checkbox" id="in-template" checked style="margin-top:2px">
         <span>
-          <span style="display:block;font-weight:500;font-size:13px;color:var(--tx)">Start from the Co-marketing / Swissmedic template</span>
-          <span style="display:block;font-size:12px;color:var(--tx3);margin-top:2px">Pre-fills 4 standard phases (agreement, Swissmedic, production, release). Uncheck to start from a single blank phase.</span>
+          <span style="display:block;font-weight:500;font-size:13px;color:var(--tx)">Start from the standard template</span>
+          <span style="display:block;font-size:12px;color:var(--tx3);margin-top:2px">Pre-fills Swissmedic, Production, and Release & Distribution. Uncheck to start from a single blank phase.</span>
+        </span>
+      </label>
+    </div>
+    <div class="form-row">
+      <label style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;cursor:pointer;background:var(--s1)">
+        <input type="checkbox" id="in-comarketing" style="margin-top:2px">
+        <span>
+          <span style="display:block;font-weight:500;font-size:13px;color:var(--tx)">This is a co-marketing project</span>
+          <span style="display:block;font-size:12px;color:var(--tx3);margin-top:2px">Adds the Co-marketing & Supply Agreement phase (amendment, agreement, signatures). Leave unchecked for standard UPSA-only launches.</span>
         </span>
       </label>
     </div>
@@ -737,12 +748,21 @@ function saveNewInno(){
   const name=document.getElementById('in-name').value.trim();
   if(!name){alert('Name is required');return;}
   const useTemplate=document.getElementById('in-template').checked;
+  const useComarketing=document.getElementById('in-comarketing').checked;
+  let phases;
+  if(useTemplate){
+    phases = useComarketing
+      ? [deepCopy(COMARKETING_PHASE), ...deepCopy(DEFAULT_PHASES_CORE)]
+      : deepCopy(DEFAULT_PHASES_CORE);
+  } else {
+    phases = [{id:uid(),name:'Phase 1',color:PHASE_COLORS[0],collapsed:false,steps:[{id:uid(),name:'Step 1',note:'',weeks:4,status:'todo',owner:''}]}];
+  }
   const inno={
     id:uid(), name, category:document.getElementById('in-cat').value||'Other',
     resp:RESP_LIST[0],
     color:document.getElementById('in-color').value||PHASE_COLORS[0],
     mode:'backward', anchorDate:new Date(Date.now()+365*86400000).toISOString().slice(0,10),
-    phases: useTemplate ? deepCopy(DEFAULT_PHASES) : [{id:uid(),name:'Phase 1',color:PHASE_COLORS[0],collapsed:false,steps:[{id:uid(),name:'Step 1',note:'',weeks:4,status:'todo',owner:''}]}]
+    phases
   };
   S.innovations.push(inno); S.selectedId=inno.id;
   save(); closeModal(); renderInnoList(); renderDetail(); notify('Innovation created ✓');
