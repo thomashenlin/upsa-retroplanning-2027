@@ -205,6 +205,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);font-si
 .empty-state p{font-size:14px;margin-bottom:16px}
 .range-wrap{display:flex;align-items:center;gap:10px;margin-top:2px}
 .color-input{height:36px;padding:2px;cursor:pointer;width:60px;border-radius:var(--r)}
+.toggle-card{display:flex;align-items:flex-start;gap:12px;border:1.5px solid var(--bd2);border-radius:var(--r);padding:12px 14px;cursor:pointer;background:var(--s0);transition:all .15s}
+.toggle-card:hover{border-color:var(--acc)}
+.toggle-card.on{border-color:var(--acc);background:var(--acc-bg)}
+.toggle-check{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--bd2);background:var(--s0);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
+.toggle-card.on .toggle-check{background:var(--acc);border-color:var(--acc)}
+.toggle-check svg{width:13px;height:13px;opacity:0;transition:opacity .15s}
+.toggle-card.on .toggle-check svg{opacity:1}
+.toggle-title{font-weight:600;font-size:13px;color:var(--tx);margin-bottom:3px}
+.toggle-sub{font-size:12px;color:var(--tx3);line-height:1.45}
+.toggle-state{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:99px;margin-left:auto;flex-shrink:0;background:var(--s1);color:var(--tx3)}
+.toggle-card.on .toggle-state{background:var(--acc);color:#fff}
 
 .notif{position:fixed;bottom:20px;right:20px;background:#1a1a18;color:#fff;padding:10px 16px;border-radius:var(--r);font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
 .notif.show{opacity:1;transform:translateY(0)}
@@ -713,30 +724,36 @@ function savePhase(innoId, phId){
 }
 
 // ─── INNOVATION MODAL ────────────────────────────────────────────────────────
+let newInnoToggles = { template: true, comarketing: false };
+
 function openNewInno(){
+  newInnoToggles = { template: true, comarketing: false };
   const swatches=PHASE_COLORS.map(c=>`<div class="color-swatch" style="background:${c}" onclick="document.getElementById('in-color').value='${c}';document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"></div>`).join('');
   document.getElementById('modalBox').innerHTML=`
     <h2>New innovation</h2>
     <div class="form-row"><label>Name *</label><input id="in-name" placeholder="E.g. Dafalgan Effervescent 500mg"></div>
     <div class="form-row"><label>Category</label><input id="in-cat" placeholder="E.g. Dafalgan"></div>
     <div class="form-row"><label>Color</label><div class="phase-colors">${swatches}</div><input type="hidden" id="in-color" value="${PHASE_COLORS[0]}"></div>
-    <div class="form-row">
-      <label style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;cursor:pointer;background:var(--s1)">
-        <input type="checkbox" id="in-template" checked style="margin-top:2px">
-        <span>
-          <span style="display:block;font-weight:500;font-size:13px;color:var(--tx)">Start from the standard template</span>
-          <span style="display:block;font-size:12px;color:var(--tx3);margin-top:2px">Pre-fills Swissmedic, Production, and Release & Distribution. Uncheck to start from a single blank phase.</span>
-        </span>
-      </label>
+    <div class="form-row" style="margin-bottom:10px">
+      <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Phase setup</label>
+      <div id="toggle-template" class="toggle-card on" onclick="toggleNewInnoOption('template')">
+        <div class="toggle-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="flex:1">
+          <div class="toggle-title">Standard template</div>
+          <div class="toggle-sub">Pre-fills Swissmedic, Production, and Release & Distribution. Turn off to start from a single blank phase.</div>
+        </div>
+        <span class="toggle-state" id="toggle-template-state">On</span>
+      </div>
     </div>
     <div class="form-row">
-      <label style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;cursor:pointer;background:var(--s1)">
-        <input type="checkbox" id="in-comarketing" style="margin-top:2px">
-        <span>
-          <span style="display:block;font-weight:500;font-size:13px;color:var(--tx)">This is a co-marketing project</span>
-          <span style="display:block;font-size:12px;color:var(--tx3);margin-top:2px">Adds the Co-marketing & Supply Agreement phase (amendment, agreement, signatures). Leave unchecked for standard UPSA-only launches.</span>
-        </span>
-      </label>
+      <div id="toggle-comarketing" class="toggle-card" onclick="toggleNewInnoOption('comarketing')">
+        <div class="toggle-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="flex:1">
+          <div class="toggle-title">Co-marketing project</div>
+          <div class="toggle-sub">Adds the Co-marketing & Supply Agreement phase (amendment, agreement, signatures). Leave off for standard UPSA-only launches.</div>
+        </div>
+        <span class="toggle-state" id="toggle-comarketing-state">Off</span>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
@@ -744,11 +761,18 @@ function openNewInno(){
     </div>`;
   document.getElementById('overlay').style.display='flex';
 }
+function toggleNewInnoOption(key){
+  newInnoToggles[key] = !newInnoToggles[key];
+  const card = document.getElementById('toggle-'+key);
+  const state = document.getElementById('toggle-'+key+'-state');
+  card.classList.toggle('on', newInnoToggles[key]);
+  state.textContent = newInnoToggles[key] ? 'On' : 'Off';
+}
 function saveNewInno(){
   const name=document.getElementById('in-name').value.trim();
   if(!name){alert('Name is required');return;}
-  const useTemplate=document.getElementById('in-template').checked;
-  const useComarketing=document.getElementById('in-comarketing').checked;
+  const useTemplate=newInnoToggles.template;
+  const useComarketing=newInnoToggles.comarketing;
   let phases;
   if(useTemplate){
     phases = useComarketing
