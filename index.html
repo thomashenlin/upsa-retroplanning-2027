@@ -297,6 +297,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);font-si
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PHASE_COLORS = ['#1a5fb4','#1baf7a','#eda100','#4a3aa7','#e34948','#eb6834','#e87ba4','#0f6e56'];
 const RESP_LIST = ['Thomas','Beat','Grégoire','Patrick','Daria'];
+const CATEGORY_LIST = ['Pain','C&F','Hydration','Women wellbeing','Gummies'];
 const RESP_CLS = {Thomas:'badge-T',Beat:'badge-B','Grégoire':'badge-G',Patrick:'badge-P',Daria:'badge-D'};
 const EXT_LIST = ['Spirig','Swissmedic','Alloga','Agency','Other partner'];
 const STEP_STATUSES = [
@@ -732,7 +733,7 @@ function openNewInno(){
   document.getElementById('modalBox').innerHTML=`
     <h2>New innovation</h2>
     <div class="form-row"><label>Name *</label><input id="in-name" placeholder="E.g. Dafalgan Effervescent 500mg"></div>
-    <div class="form-row"><label>Category</label><input id="in-cat" placeholder="E.g. Dafalgan"></div>
+    <div class="form-row"><label>Category</label><select id="in-cat">${CATEGORY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
     <div class="form-row"><label>Color</label><div class="phase-colors">${swatches}</div><input type="hidden" id="in-color" value="${PHASE_COLORS[0]}"></div>
     <div class="form-row" style="margin-bottom:10px">
       <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Phase setup</label>
@@ -782,7 +783,7 @@ function saveNewInno(){
     phases = [{id:uid(),name:'Phase 1',color:PHASE_COLORS[0],collapsed:false,steps:[{id:uid(),name:'Step 1',note:'',weeks:4,status:'todo',owner:''}]}];
   }
   const inno={
-    id:uid(), name, category:document.getElementById('in-cat').value||'Other',
+    id:uid(), name, category:document.getElementById('in-cat').value||CATEGORY_LIST[0],
     resp:RESP_LIST[0],
     color:document.getElementById('in-color').value||PHASE_COLORS[0],
     mode:'backward', anchorDate:new Date(Date.now()+365*86400000).toISOString().slice(0,10),
@@ -794,11 +795,13 @@ function saveNewInno(){
 function openEditInno(id){
   const inno=S.innovations.find(i=>i.id===id);
   const respOpts=RESP_LIST.map(r=>`<option value="${r}"${inno.resp===r?' selected':''}>${r}</option>`).join('');
+  const catList = CATEGORY_LIST.includes(inno.category) ? CATEGORY_LIST : [inno.category, ...CATEGORY_LIST];
+  const catOpts = catList.map(c=>`<option value="${esc(c)}"${inno.category===c?' selected':''}>${esc(c)}</option>`).join('');
   document.getElementById('modalBox').innerHTML=`
     <h2>Edit innovation</h2>
     <div class="form-row"><label>Name</label><input id="in-name" value="${esc(inno.name)}"></div>
     <div class="form-grid">
-      <div class="form-row"><label>Category</label><input id="in-cat" value="${esc(inno.category)}"></div>
+      <div class="form-row"><label>Category</label><select id="in-cat">${catOpts}</select></div>
       <div class="form-row"><label>UPSA owner</label><select id="in-resp">${respOpts}</select></div>
     </div>
     <div class="modal-footer">
