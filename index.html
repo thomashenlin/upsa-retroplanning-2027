@@ -312,8 +312,6 @@ const STEP_STATUSES = [
 // Source: Swissmedic ZL000_00_014 v10.0 (01.09.2025)
 // CD = calendar days, converted to weeks (÷7, rounded to nearest 0.5)
 const SMC_PROCEDURES = {
-  'none': { label: 'No Swissmedic phase', phases: [] },
-
   'na_standard': {
     label: 'New authorisation — known active substance (national, standard)',
     totalCD: 540,
@@ -836,44 +834,69 @@ function savePhase(innoId, phId){
 // ─── INNOVATION MODAL ────────────────────────────────────────────────────────
 function openNewInno(){
   const swatches=PHASE_COLORS.map(c=>`<div class="color-swatch" style="background:${c}" onclick="document.getElementById('in-color').value='${c}';document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"></div>`).join('');
+  const smcOpts=Object.entries(SMC_PROCEDURES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
   document.getElementById('modalBox').innerHTML=`
     <h2>New innovation</h2>
     <div class="form-row"><label>Name *</label><input id="in-name" placeholder="E.g. Dafalgan Effervescent 500mg"></div>
     <div class="form-row"><label>Category</label><select id="in-cat">${CATEGORY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
     <div class="form-row"><label>Color</label><div class="phase-colors">${swatches}</div><input type="hidden" id="in-color" value="${PHASE_COLORS[0]}"></div>
     <div class="form-row">
+      <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Product type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div id="pt-drug" class="toggle-card on" onclick="selectProductType('drug')">
+          <div class="toggle-check" id="pt-drug-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><div class="toggle-title">💊 Drug</div><div class="toggle-sub">Regulated by Swissmedic. Includes regulatory submission process.</div></div>
+        </div>
+        <div id="pt-food" class="toggle-card" onclick="selectProductType('food')">
+          <div class="toggle-check" id="pt-food-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><div class="toggle-title">🌿 Food supplement</div><div class="toggle-sub">No Swissmedic submission. Standard UPSA launch process only.</div></div>
+        </div>
+      </div>
+      <input type="hidden" id="in-product-type" value="drug">
+    </div>
+    <div id="smc-section" class="form-row">
       <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Swissmedic procedure</label>
-      <select id="in-smc" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--s0);color:var(--tx);font-family:inherit;outline:none">
-        ${Object.entries(SMC_PROCEDURES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
-      </select>
+      <select id="in-smc" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--s0);color:var(--tx);font-family:inherit;outline:none">${smcOpts}</select>
       <div id="smc-hint" style="font-size:11px;color:var(--tx3);margin-top:5px"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveNewInno()">Create \u2192</button>
+      <button class="btn btn-primary" onclick="saveNewInno()">Create →</button>
     </div>`;
   document.getElementById('overlay').style.display='flex';
   setTimeout(()=>{
-    const sel = document.getElementById('in-smc');
-    const hint = document.getElementById('smc-hint');
+    selectProductType('drug');
+    const sel=document.getElementById('in-smc');
+    const hint=document.getElementById('smc-hint');
     if(!sel||!hint) return;
-    const updateHint = () => {
-      const proc = SMC_PROCEDURES[sel.value];
-      hint.textContent = proc?.totalCD
-        ? `Total Swissmedic timeline: ${proc.totalCD} calendar days (~${Math.round(proc.totalCD/7)} weeks)`
-        : '';
+    const updateHint=()=>{
+      const proc=SMC_PROCEDURES[sel.value];
+      hint.textContent=proc?.totalCD?`Total Swissmedic timeline: ${proc.totalCD} calendar days (~${Math.round(proc.totalCD/7)} weeks)`:'';
     };
     sel.addEventListener('change', updateHint);
+    updateHint();
   }, 0);
+}
+
+function selectProductType(type){
+  ['drug','food'].forEach(t=>{
+    const card=document.getElementById('pt-'+t);
+    if(card) card.classList.toggle('on', t===type);
+  });
+  const smcSection=document.getElementById('smc-section');
+  if(smcSection) smcSection.style.display=type==='drug'?'block':'none';
+  const hidden=document.getElementById('in-product-type');
+  if(hidden) hidden.value=type;
 }
 
 function saveNewInno(){
   const name=document.getElementById('in-name').value.trim();
   if(!name){alert('Name is required');return;}
-  const smcKey = document.getElementById('in-smc').value;
-  const smcPhases = deepCopy(SMC_PROCEDURES[smcKey]?.phases||[]).map(ph=>({...ph,id:uid(),steps:ph.steps.map(s=>({...s,id:uid()}))}));
+  const productType = document.getElementById('in-product-type')?.value || 'drug';
+  const isDrug = productType === 'drug';
+  const smcKey = isDrug ? (document.getElementById('in-smc')?.value || Object.keys(SMC_PROCEDURES)[0]) : null;
+  const smcPhases = isDrug ? deepCopy(SMC_PROCEDURES[smcKey]?.phases||[]).map(ph=>({...ph,id:uid(),steps:ph.steps.map(s=>({...s,id:uid()}))})) : [];
   const isComarketing = smcKey === 'comarketing';
-  // Phase order: Co-marketing agreement (if applicable) → Swissmedic regulatory → UPSA internal (Production + Release)
   const upsaInternal = deepCopy(DEFAULT_PHASES_CORE).map(ph=>({...ph,id:uid(),steps:ph.steps.map(s=>({...s,id:uid()}))}));
   const phases = [
     ...(isComarketing ? [{...deepCopy(COMARKETING_PHASE), id:uid(), steps:deepCopy(COMARKETING_PHASE).steps.map(s=>({...s,id:uid()}))}] : []),
