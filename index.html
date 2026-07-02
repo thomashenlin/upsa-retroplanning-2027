@@ -815,10 +815,7 @@ function savePhase(innoId, phId){
 }
 
 // ─── INNOVATION MODAL ────────────────────────────────────────────────────────
-let newInnoToggles = { template: true, comarketing: false };
-
 function openNewInno(){
-  newInnoToggles = { template: true, comarketing: false };
   const swatches=PHASE_COLORS.map(c=>`<div class="color-swatch" style="background:${c}" onclick="document.getElementById('in-color').value='${c}';document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"></div>`).join('');
   document.getElementById('modalBox').innerHTML=`
     <h2>New innovation</h2>
@@ -832,36 +829,15 @@ function openNewInno(){
       </select>
       <div id="smc-hint" style="font-size:11px;color:var(--tx3);margin-top:5px"></div>
     </div>
-      <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Phase setup</label>
-      <div id="toggle-template" class="toggle-card on" onclick="toggleNewInnoOption('template')">
-        <div class="toggle-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div style="flex:1">
-          <div class="toggle-title">Standard template</div>
-          <div class="toggle-sub" id="toggle-template-sub">Pre-fills Swissmedic, Production, and Release & Distribution. Turn off to start from a single blank phase.</div>
-        </div>
-        <span class="toggle-state" id="toggle-template-state">On</span>
-      </div>
-    </div>
-    <div class="form-row">
-      <div id="toggle-comarketing" class="toggle-card" onclick="toggleNewInnoOption('comarketing')">
-        <div class="toggle-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div style="flex:1">
-          <div class="toggle-title">Co-marketing project</div>
-          <div class="toggle-sub">Adds the Co-marketing & Supply Agreement phase (amendment, agreement, signatures). Leave off for standard UPSA-only launches.</div>
-        </div>
-        <span class="toggle-state" id="toggle-comarketing-state">Off</span>
-      </div>
-    </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveNewInno()">Create →</button>
+      <button class="btn btn-primary" onclick="saveNewInno()">Create \u2192</button>
     </div>`;
   document.getElementById('overlay').style.display='flex';
-  // Bind SMC procedure hint after render
   setTimeout(()=>{
     const sel = document.getElementById('in-smc');
     const hint = document.getElementById('smc-hint');
-    if(!sel || !hint) return;
+    if(!sel||!hint) return;
     const updateHint = () => {
       const proc = SMC_PROCEDURES[sel.value];
       hint.textContent = proc?.totalCD
@@ -871,61 +847,20 @@ function openNewInno(){
     sel.addEventListener('change', updateHint);
   }, 0);
 }
-function toggleNewInnoOption(key){
-  // Standard template can't be turned off while co-marketing is on — it depends on it
-  if(key === 'template' && newInnoToggles.comarketing) return;
 
-  newInnoToggles[key] = !newInnoToggles[key];
-  // Co-marketing always builds on top of the standard template
-  if(key === 'comarketing' && newInnoToggles.comarketing){
-    newInnoToggles.template = true;
-  }
-  applyToggleVisuals();
-}
-function applyToggleVisuals(){
-  ['template','comarketing'].forEach(key=>{
-    const card = document.getElementById('toggle-'+key);
-    const state = document.getElementById('toggle-'+key+'-state');
-    if(!card) return;
-    card.classList.toggle('on', newInnoToggles[key]);
-    state.textContent = newInnoToggles[key] ? 'On' : 'Off';
-  });
-  const tplCard = document.getElementById('toggle-template');
-  const tplState = document.getElementById('toggle-template-state');
-  const tplSub = document.getElementById('toggle-template-sub');
-  const locked = newInnoToggles.comarketing;
-  if(tplCard){
-    tplCard.classList.toggle('locked', locked);
-    tplState.textContent = locked ? 'Required' : (newInnoToggles.template ? 'On' : 'Off');
-    tplSub.textContent = locked
-      ? 'Required by the co-marketing phase below — can\'t be turned off while it\'s on.'
-      : 'Pre-fills Swissmedic, Production, and Release & Distribution. Turn off to start from a single blank phase.';
-  }
-}
 function saveNewInno(){
   const name=document.getElementById('in-name').value.trim();
   if(!name){alert('Name is required');return;}
-  const useTemplate=newInnoToggles.template;
-  const useComarketing=newInnoToggles.comarketing;
   const smcKey = document.getElementById('in-smc').value;
-  const smcPhases = SMC_PROCEDURES[smcKey]?.phases || [];
-  let phases;
-  if(useTemplate || useComarketing){
-    const basePh = useComarketing
-      ? [deepCopy(COMARKETING_PHASE), ...deepCopy(DEFAULT_PHASES_CORE)]
-      : deepCopy(DEFAULT_PHASES_CORE);
-    // Inject Swissmedic phase before Release & Distribution (last phase), or append
-    const smcClone = deepCopy(smcPhases).map(ph=>({...ph, id:uid(), steps:ph.steps.map(s=>({...s,id:uid()}))}));
-    if(smcClone.length){
-      // Insert SMC phase after CO-MARKETING (if any) but before PRODUCTION
-      const insertIdx = useComarketing ? 1 : 0;
-      basePh.splice(insertIdx, 0, ...smcClone);
-    }
-    phases = basePh;
-  } else {
-    const smcClone = deepCopy(smcPhases).map(ph=>({...ph, id:uid(), steps:ph.steps.map(s=>({...s,id:uid()}))}));
-    phases = smcClone.length ? smcClone : [{id:uid(),name:'Phase 1',color:PHASE_COLORS[0],collapsed:false,steps:[{id:uid(),name:'Step 1',note:'',weeks:4,status:'todo',owner:''}]}];
-  }
+  const smcPhases = deepCopy(SMC_PROCEDURES[smcKey]?.phases||[]).map(ph=>({...ph,id:uid(),steps:ph.steps.map(s=>({...s,id:uid()}))}));
+  const isComarketing = smcKey === 'comarketing';
+  // Phase order: Co-marketing agreement (if applicable) → Swissmedic regulatory → UPSA internal (Production + Release)
+  const upsaInternal = deepCopy(DEFAULT_PHASES_CORE).map(ph=>({...ph,id:uid(),steps:ph.steps.map(s=>({...s,id:uid()}))}));
+  const phases = [
+    ...(isComarketing ? [{...deepCopy(COMARKETING_PHASE), id:uid(), steps:deepCopy(COMARKETING_PHASE).steps.map(s=>({...s,id:uid()}))}] : []),
+    ...smcPhases,
+    ...upsaInternal,
+  ];
   const inno={
     id:uid(), name, category:document.getElementById('in-cat').value||CATEGORY_LIST[0],
     resp:RESP_LIST[0],
