@@ -405,7 +405,7 @@ const COMARKETING_PHASE = {
     ]};
 
 const DEFAULT_PHASES_CORE = [
-  {id:'ph3', name:'PRODUCTION', color:'#4a3aa7', collapsed:false,
+  {id:'ph3', name:'AW & PRODUCTION', color:'#4a3aa7', collapsed:false,
     steps:[
       {id:'s6',name:'Print proof prep',note:'',weeks:2,status:'todo',owner:'Spirig'},
       {id:'s7',name:'AW approval & order',note:'',weeks:4,status:'todo',owner:'Spirig'},
@@ -502,17 +502,30 @@ function computeDates(inno){
     let cursor=anchor;
     [...allSteps].reverse().forEach(s=>{
       const w=parseFloat(s.weeks)||0;
-      const end=cursor, start=subWeeks(end,w);
-      dates[s.id]={start,end};
-      cursor=start;
+      // If this step has a manual override, pin its start and reset the cursor
+      if(s.startOverride){
+        const end=addWeeks(s.startOverride,w);
+        dates[s.id]={start:s.startOverride, end, pinned:true};
+        cursor=s.startOverride; // next step (going backwards) ends where this one starts
+      } else {
+        const end=cursor, start=subWeeks(end,w);
+        dates[s.id]={start,end};
+        cursor=start;
+      }
     });
   } else {
     let cursor=anchor;
     allSteps.forEach(s=>{
       const w=parseFloat(s.weeks)||0;
-      const start=cursor, end=addWeeks(start,w);
-      dates[s.id]={start,end};
-      cursor=end;
+      if(s.startOverride){
+        const end=addWeeks(s.startOverride,w);
+        dates[s.id]={start:s.startOverride, end, pinned:true};
+        cursor=end; // next step starts after this one ends
+      } else {
+        const start=cursor, end=addWeeks(start,w);
+        dates[s.id]={start,end};
+        cursor=end;
+      }
     });
   }
   return dates;
@@ -714,8 +727,11 @@ function renderPhaseBlock(inno, ph, pi, dates, pr){
           </div>
         </td>
         <td class="date-cell">
-          <input class="date-editable" type="date" value="${d.start||''}" onchange="overrideStart('${inno.id}','${ph.id}','${step.id}',this.value)">
-          <div class="date-end">${d.start?fmtWeek(d.start):''}</div>
+          <input class="date-editable" type="date" value="${step.startOverride||d.start||''}" onchange="overrideStart('${inno.id}','${ph.id}','${step.id}',this.value)" title="${step.startOverride?'📌 Manually pinned — overrides calculated date':'Calculated date — edit to pin'}">
+          <div class="date-end" style="display:flex;align-items:center;gap:4px">
+            ${d.start?fmtWeek(d.start):''}
+            ${step.startOverride?`<span style="color:var(--acc);font-size:10px;cursor:pointer" onclick="clearOverride('${inno.id}','${ph.id}','${step.id}')" title="Remove pin — back to calculated date">📌</span>`:''}
+          </div>
         </td>
         <td class="date-cell">
           <div class="date-display">${d.end?fmtDate(d.end):'—'}</div>
@@ -747,13 +763,21 @@ function updateStep(innoId, phId, stepId, field, val){
 }
 function overrideStart(innoId, phId, stepId, newStart){
   const inno=S.innovations.find(i=>i.id===innoId);
-  const allSteps=inno.phases.flatMap(ph=>ph.steps);
-  const idx=allSteps.findIndex(s=>s.id===stepId);
-  const weeksBefore=allSteps.slice(0,idx).reduce((a,s)=>a+(parseFloat(s.weeks)||0),0);
-  const weeksAfter=allSteps.slice(idx).reduce((a,s)=>a+(parseFloat(s.weeks)||0),0);
-  if(inno.mode==='forward'){ inno.anchorDate=subWeeks(newStart,weeksBefore); }
-  else { inno.anchorDate=addWeeks(newStart,weeksAfter); }
+  const ph=inno.phases.find(p=>p.id===phId);
+  const step=ph.steps.find(s=>s.id===stepId);
+  if(newStart){
+    step.startOverride = newStart;
+  } else {
+    delete step.startOverride;
+  }
   save(); renderDetail();
+}
+function clearOverride(innoId, phId, stepId){
+  const inno=S.innovations.find(i=>i.id===innoId);
+  const ph=inno.phases.find(p=>p.id===phId);
+  const step=ph.steps.find(s=>s.id===stepId);
+  delete step.startOverride;
+  save(); renderDetail(); notify('Date pin removed — back to calculated date');
 }
 function addStep(innoId, phId){
   const inno=S.innovations.find(i=>i.id===innoId);
