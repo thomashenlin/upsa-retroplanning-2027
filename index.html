@@ -308,6 +308,94 @@ const STEP_STATUSES = [
   {v:'done',   label:'Done',      cls:'status-done'},
 ];
 
+// ─── SWISSMEDIC PROCEDURE TEMPLATES ──────────────────────────────────────────
+// Source: Swissmedic ZL000_00_014 v10.0 (01.09.2025)
+// CD = calendar days, converted to weeks (÷7, rounded to nearest 0.5)
+const SMC_PROCEDURES = {
+  'none': { label: 'No Swissmedic phase', phases: [] },
+
+  'na_standard': {
+    label: 'New authorisation — known active substance (national, standard)',
+    totalCD: 540,
+    phases: [{
+      id:'smc_na', name:'SWISSMEDIC — New Authorisation (Standard)', color:'#eda100', collapsed:false,
+      steps:[
+        {id:'smc1', name:'Formal control (SMC)', note:'Swissmedic checks formal aspects of the dossier', weeks:4, status:'todo', owner:'Swissmedic'},
+        {id:'smc2', name:'Correction of documents (Applicant)', note:'Applicant corrects any formal shortcomings', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc3', name:'Evaluation Phase I (SMC)', note:'Scientific evaluation — LoQ drawn up', weeks:17, status:'todo', owner:'Swissmedic'},
+        {id:'smc4', name:'Reply to List of Questions (Applicant)', note:'Applicant responds to all LoQ points', weeks:13, status:'todo', owner:'Thomas'},
+        {id:'smc5', name:'Evaluation Phase II (SMC)', note:'Evaluation of LoQ replies — ends with Preliminary Decision', weeks:13, status:'todo', owner:'Swissmedic'},
+        {id:'smc6', name:'Reply to Preliminary Decision (Applicant)', note:'Applicant submits revised MPI texts & packaging', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc7', name:'Eval. of reply to PD — Official Decision (SMC)', note:'Labelling review + official decision', weeks:13, status:'todo', owner:'Swissmedic'},
+      ]
+    }]
+  },
+
+  'comarketing': {
+    label: 'Co-marketing — new authorisation (national, standard)',
+    totalCD: 240,
+    phases: [{
+      id:'smc_cm', name:'SWISSMEDIC — Co-Marketing Authorisation', color:'#1a5fb4', collapsed:false,
+      steps:[
+        {id:'smc_cm1', name:'Formal control (SMC)', note:'', weeks:4, status:'todo', owner:'Swissmedic'},
+        {id:'smc_cm2', name:'Correction of documents (Applicant)', note:'', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc_cm3', name:'Evaluation Phase I (SMC)', note:'', weeks:4, status:'todo', owner:'Swissmedic'},
+        {id:'smc_cm4', name:'Reply to List of Questions (Applicant)', note:'', weeks:4, status:'todo', owner:'Thomas'},
+        {id:'smc_cm5', name:'Evaluation Phase II (SMC)', note:'', weeks:4, status:'todo', owner:'Swissmedic'},
+        {id:'smc_cm6', name:'Reply to Preliminary Decision (Applicant)', note:'', weeks:4, status:'todo', owner:'Thomas'},
+        {id:'smc_cm7', name:'Eval. of reply to PD — Official Decision (SMC)', note:'', weeks:4, status:'todo', owner:'Swissmedic'},
+      ]
+    }]
+  },
+
+  'ftp': {
+    label: 'Fast-track procedure (FTP — Art. 7 TPO)',
+    totalCD: 350,
+    phases: [{
+      id:'smc_ftp', name:'SWISSMEDIC — Fast-Track Procedure (FTP)', color:'#e34948', collapsed:false,
+      steps:[
+        {id:'smc_ftp1', name:'Formal control (SMC)', note:'Accelerated — only 5 calendar days', weeks:1, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ftp2', name:'Correction of documents (Applicant)', note:'', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc_ftp3', name:'Evaluation Phase I (SMC)', note:'', weeks:9, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ftp4', name:'Reply to List of Questions (Applicant)', note:'6-day submission window before HMEC date applies', weeks:13, status:'todo', owner:'Thomas'},
+        {id:'smc_ftp5', name:'Evaluation Phase II (SMC)', note:'', weeks:7, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ftp6', name:'Reply to Preliminary Decision (Applicant)', note:'', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc_ftp7', name:'Eval. of reply to PD — Official Decision (SMC)', note:'', weeks:3, status:'todo', owner:'Swissmedic'},
+      ]
+    }]
+  },
+
+  'type_ib': {
+    label: 'Variation Type IB (Art. 22 TPO)',
+    totalCD: 100,
+    phases: [{
+      id:'smc_ib', name:'SWISSMEDIC — Variation Type IB', color:'#4a3aa7', collapsed:false,
+      steps:[
+        {id:'smc_ib1', name:'Formal control (SMC)', note:'', weeks:1, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ib2', name:'Correction of documents (Applicant)', note:'', weeks:4, status:'todo', owner:'Thomas'},
+        {id:'smc_ib3', name:'Evaluation → Interim order / Official Decision (SMC)', note:'No LoQ phase in standard IB procedure', weeks:9, status:'todo', owner:'Swissmedic'},
+      ]
+    }]
+  },
+
+  'type_ii': {
+    label: 'Variation Type II (Art. 23 TPO)',
+    totalCD: 450,
+    phases: [{
+      id:'smc_ii', name:'SWISSMEDIC — Variation Type II', color:'#0f6e56', collapsed:false,
+      steps:[
+        {id:'smc_ii1', name:'Formal control (SMC)', note:'', weeks:4, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ii2', name:'Correction of documents (Applicant)', note:'', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc_ii3', name:'Evaluation Phase I (SMC)', note:'', weeks:17, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ii4', name:'Reply to List of Questions (Applicant)', note:'', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc_ii5', name:'Evaluation Phase II (SMC)', note:'', weeks:10, status:'todo', owner:'Swissmedic'},
+        {id:'smc_ii6', name:'Reply to Preliminary Decision (Applicant)', note:'', weeks:9, status:'todo', owner:'Thomas'},
+        {id:'smc_ii7', name:'Eval. of reply to PD — Official Decision (SMC)', note:'', weeks:7, status:'todo', owner:'Swissmedic'},
+      ]
+    }]
+  },
+};
+
 const COMARKETING_PHASE = {
   id:'ph1', name:'CO-MARKETING & SUPPLY AGREEMENT', color:'#1a5fb4', collapsed:false,
     steps:[
@@ -737,7 +825,13 @@ function openNewInno(){
     <div class="form-row"><label>Name *</label><input id="in-name" placeholder="E.g. Dafalgan Effervescent 500mg"></div>
     <div class="form-row"><label>Category</label><select id="in-cat">${CATEGORY_LIST.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
     <div class="form-row"><label>Color</label><div class="phase-colors">${swatches}</div><input type="hidden" id="in-color" value="${PHASE_COLORS[0]}"></div>
-    <div class="form-row" style="margin-bottom:10px">
+    <div class="form-row">
+      <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Swissmedic procedure</label>
+      <select id="in-smc" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--s0);color:var(--tx);font-family:inherit;outline:none">
+        ${Object.entries(SMC_PROCEDURES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
+      </select>
+      <div id="smc-hint" style="font-size:11px;color:var(--tx3);margin-top:5px"></div>
+    </div>
       <label style="display:block;font-size:12px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Phase setup</label>
       <div id="toggle-template" class="toggle-card on" onclick="toggleNewInnoOption('template')">
         <div class="toggle-check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -763,6 +857,19 @@ function openNewInno(){
       <button class="btn btn-primary" onclick="saveNewInno()">Create →</button>
     </div>`;
   document.getElementById('overlay').style.display='flex';
+  // Bind SMC procedure hint after render
+  setTimeout(()=>{
+    const sel = document.getElementById('in-smc');
+    const hint = document.getElementById('smc-hint');
+    if(!sel || !hint) return;
+    const updateHint = () => {
+      const proc = SMC_PROCEDURES[sel.value];
+      hint.textContent = proc?.totalCD
+        ? `Total Swissmedic timeline: ${proc.totalCD} calendar days (~${Math.round(proc.totalCD/7)} weeks)`
+        : '';
+    };
+    sel.addEventListener('change', updateHint);
+  }, 0);
 }
 function toggleNewInnoOption(key){
   // Standard template can't be turned off while co-marketing is on — it depends on it
@@ -800,13 +907,24 @@ function saveNewInno(){
   if(!name){alert('Name is required');return;}
   const useTemplate=newInnoToggles.template;
   const useComarketing=newInnoToggles.comarketing;
+  const smcKey = document.getElementById('in-smc').value;
+  const smcPhases = SMC_PROCEDURES[smcKey]?.phases || [];
   let phases;
   if(useTemplate || useComarketing){
-    phases = useComarketing
+    const basePh = useComarketing
       ? [deepCopy(COMARKETING_PHASE), ...deepCopy(DEFAULT_PHASES_CORE)]
       : deepCopy(DEFAULT_PHASES_CORE);
+    // Inject Swissmedic phase before Release & Distribution (last phase), or append
+    const smcClone = deepCopy(smcPhases).map(ph=>({...ph, id:uid(), steps:ph.steps.map(s=>({...s,id:uid()}))}));
+    if(smcClone.length){
+      // Insert SMC phase after CO-MARKETING (if any) but before PRODUCTION
+      const insertIdx = useComarketing ? 1 : 0;
+      basePh.splice(insertIdx, 0, ...smcClone);
+    }
+    phases = basePh;
   } else {
-    phases = [{id:uid(),name:'Phase 1',color:PHASE_COLORS[0],collapsed:false,steps:[{id:uid(),name:'Step 1',note:'',weeks:4,status:'todo',owner:''}]}];
+    const smcClone = deepCopy(smcPhases).map(ph=>({...ph, id:uid(), steps:ph.steps.map(s=>({...s,id:uid()}))}));
+    phases = smcClone.length ? smcClone : [{id:uid(),name:'Phase 1',color:PHASE_COLORS[0],collapsed:false,steps:[{id:uid(),name:'Step 1',note:'',weeks:4,status:'todo',owner:''}]}];
   }
   const inno={
     id:uid(), name, category:document.getElementById('in-cat').value||CATEGORY_LIST[0],
