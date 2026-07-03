@@ -956,11 +956,8 @@ function saveEditInno(id){
 // ─── GLOBAL GANTT ────────────────────────────────────────────────────────────
 function renderGlobal(){
   const total=S.innovations.length;
-  const lateCount = S.innovations.filter(innoHasLateStep).length;
-  const onTimeCount = total - lateCount;
-  const ranges=S.innovations.map(i=>innoRange(i));
-  const allStarts=ranges.map(r=>r.start).filter(Boolean).sort();
-  const allEnds=ranges.map(r=>r.end).filter(Boolean).sort().reverse();
+  const lateCount=S.innovations.filter(innoHasLateStep).length;
+  const onTimeCount=total-lateCount;
 
   document.getElementById('globalKPIs').innerHTML=`
     <div class="kpi"><div class="lbl">Total innovations 2027</div><div class="val">${total}</div></div>
@@ -968,82 +965,164 @@ function renderGlobal(){
     <div class="kpi"><div class="lbl">Late</div><div class="val" style="color:${lateCount?'var(--err)':'var(--tx)'}">${lateCount}</div></div>
   `;
 
-  if(!S.innovations.length){ document.getElementById('globalGantt').innerHTML='<div class="empty-state"><div class="icon">📅</div><p>No innovations to display</p></div>'; return; }
-
-  const startD=allStarts[0]?new Date(allStarts[0]):new Date();
-  const endD=allEnds[0]?new Date(allEnds[0]):new Date(startD.getTime()+86400000*365);
-  startD.setDate(1); endD.setDate(1); endD.setMonth(endD.getMonth()+1);
-  const months=[]; let cur=new Date(startD);
-  while(cur<=endD){months.push(new Date(cur));cur.setMonth(cur.getMonth()+1);}
-  const COL=52, today=new Date().toISOString().slice(0,7), totalWidth=months.length*COL;
-
-  function dateToX(dateStr){
-    if(!dateStr) return 0;
-    const d=new Date(dateStr);
-    const diffDays=(d-startD)/86400000, totalDays=(endD-startD)/86400000;
-    return Math.round((diffDays/totalDays)*totalWidth);
+  if(!S.innovations.length){
+    document.getElementById('globalGantt').innerHTML='<div class="empty-state"><div class="icon">📅</div><p>No innovations to display</p></div>';
+    return;
   }
 
-  // Group by category in CATEGORY_LIST order
-  const order = [...CATEGORY_LIST, 'Other'];
-  const grouped = {};
+  // Collect all step dates to define week range
+  const allDates=[];
   S.innovations.forEach(inno=>{
-    const cat = CATEGORY_LIST.includes(inno.category) ? inno.category : 'Other';
+    const dates=computeDates(inno);
+    inno.phases.forEach(ph=>ph.steps.forEach(s=>{
+      const d=dates[s.id];
+      if(d?.start) allDates.push(d.start);
+      if(d?.end) allDates.push(d.end);
+    }));
+  });
+  if(!allDates.length){ document.getElementById('globalGantt').innerHTML=''; return; }
+  allDates.sort();
+
+  // Build week list: Monday of each week from earliest to latest
+  function mondayOf(dateStr){
+    const d=new Date(dateStr);
+    const day=d.getDay(); // 0=Sun
+    const diff=d.getDate()-(day===0?6:day-1);
+    return new Date(d.setDate(diff));
+  }
+  function toISO(d){ return d.toISOString().slice(0,10); }
+
+  const firstMon = mondayOf(allDates[0]);
+  const lastDate = new Date(allDates[allDates.length-1]);
+  lastDate.setDate(lastDate.getDate()+7);
+
+  const weeks=[];
+  let wCur=new Date(firstMon);
+  while(wCur<=lastDate){
+    weeks.push(new Date(wCur));
+    wCur.setDate(wCur.getDate()+7);
+  }
+
+  const COL=36; // px per week
+  const LABEL_W=260;
+  const totalW=weeks.length*COL;
+  const todayISO=todayStr();
+
+  function weekX(dateStr){
+    if(!dateStr) return 0;
+    const d=new Date(dateStr);
+    const diffDays=(d-firstMon)/86400000;
+    return Math.max(0,Math.round((diffDays/7)*COL));
+  }
+
+  function weekLabel(m){
+    const mn=MONTHS_SHORT[m.getMonth()];
+    const day=m.getDate();
+    const yr=String(m.getFullYear()).slice(2);
+    return `${mn} ${day}`;
+  }
+
+  // Week number helper
+  function getWeekNum(d){
+    const jan1=new Date(d.getFullYear(),0,1);
+    return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+  }
+
+  const todayX=weekX(todayISO);
+
+  // Group by category
+  const order=[...CATEGORY_LIST,'Other'];
+  const grouped={};
+  S.innovations.forEach(inno=>{
+    const cat=CATEGORY_LIST.includes(inno.category)?inno.category:'Other';
     if(!grouped[cat]) grouped[cat]=[];
     grouped[cat].push(inno);
   });
-  const cats = order.filter(c=>grouped[c]);
+  const cats=order.filter(c=>grouped[c]);
 
-  let html=`<div style="min-width:${280+totalWidth}px">
-  <div class="gg-header"><div class="gg-label">Innovation</div><div class="gg-months">
-    ${months.map(m=>{const key=`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,'0')}`;
-      return `<div class="gg-month${key===today?' now':''}" style="width:${COL}px">${MONTHS_SHORT[m.getMonth()]}<br><span style="font-size:9px;opacity:.7">${m.getFullYear()}</span></div>`;}).join('')}
-  </div></div>`;
+  // Header: month labels spanning weeks
+  let monthSpans=[];
+  weeks.forEach((w,i)=>{
+    const key=`${w.getFullYear()}-${w.getMonth()}`;
+    if(!monthSpans.length||monthSpans[monthSpans.length-1].key!==key){
+      monthSpans.push({key,label:`${MONTHS_SHORT[w.getMonth()]} ${w.getFullYear()}`,start:i,count:1});
+    } else {
+      monthSpans[monthSpans.length-1].count++;
+    }
+  });
+
+  let html=`<div style="min-width:${LABEL_W+totalW}px">
+  <div class="gg-header" style="position:sticky;top:0;z-index:20">
+    <div class="gg-label" style="width:${LABEL_W}px;min-width:${LABEL_W}px">Step</div>
+    <div style="display:flex;flex-direction:column;flex:1">
+      <div style="display:flex;border-bottom:1px solid var(--bd)">
+        ${monthSpans.map(ms=>`<div style="width:${ms.count*COL}px;font-size:11px;font-weight:600;color:var(--tx2);padding:5px 6px;border-right:1px solid var(--bd);white-space:nowrap;overflow:hidden">${ms.label}</div>`).join('')}
+      </div>
+      <div style="display:flex">
+        ${weeks.map((w,i)=>{
+          const iso=toISO(w);
+          const isNow=iso<=todayISO&&todayISO<toISO(new Date(w.getTime()+7*86400000));
+          return `<div style="width:${COL}px;font-size:9px;color:${isNow?'var(--acc)':'var(--tx3)'};font-weight:${isNow?700:400};text-align:center;padding:3px 0;border-right:1px solid var(--bd);border-left:none;white-space:nowrap;overflow:hidden;flex-shrink:0">W${getWeekNum(w)}</div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
 
   cats.forEach(cat=>{
-    const catInnovations = grouped[cat];
-    const catLate = catInnovations.filter(innoHasLateStep).length;
-    html += `<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s2)">
-      <div class="gg-label" style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:8px">
-        ${esc(cat)}
-        <span style="font-weight:400;color:var(--tx3)">${catInnovations.length}</span>
-        ${catLate?`<span style="color:var(--err);font-size:10px">⚠ ${catLate} late</span>`:''}
+    const catInno=grouped[cat];
+    const catLate=catInno.filter(innoHasLateStep).length;
+    // Category header
+    html+=`<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s2);position:sticky;top:52px;z-index:10">
+      <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:8px">
+        ${esc(cat)}<span style="font-weight:400;color:var(--tx3)">${catInno.length}</span>${catLate?`<span style="color:var(--err);font-size:10px">⚠ ${catLate} late</span>`:''}
       </div>
-      <div style="flex:1;min-width:${totalWidth}px"></div>
+      <div style="flex:1;min-width:${totalW}px;position:relative"><div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.4;pointer-events:none"></div></div>
     </div>`;
 
-    catInnovations.forEach(inno=>{
+    catInno.forEach(inno=>{
       const dates=computeDates(inno);
-      const todayX=dateToX(todayStr());
       const lateFlag=innoHasLateStep(inno);
-      html += `<div class="gg-row group-row">
-        <div class="gg-row-label" onclick="selectAndGoDetail('${inno.id}')">
+      // Innovation name row
+      html+=`<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s1);cursor:pointer" onclick="selectAndGoDetail('${inno.id}')">
+        <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:7px 16px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--tx)">
           <div class="inno-dot" style="background:${inno.color}"></div>${lateFlag?'⚠ ':''}${esc(inno.name)}
-          <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="margin-left:auto;flex-shrink:0">${inno.resp}</span>
+          <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="margin-left:auto;flex-shrink:0;font-size:10px">${inno.resp}</span>
         </div>
-        <div class="gg-timeline" style="min-width:${totalWidth}px;position:relative"><div class="gg-today" style="left:${todayX}px"></div></div>
+        <div style="flex:1;min-width:${totalW}px;position:relative;height:32px">
+          <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.4;pointer-events:none"></div>
+        </div>
       </div>`;
+
+      // Each step as a row
       inno.phases.forEach(ph=>{
-        const pr=phaseRange(ph,dates);
-        if(!pr.start||!pr.end) return;
-        const x=dateToX(pr.start), w=Math.max(dateToX(pr.end)-x,8);
-        const totalPh=ph.steps.reduce((a,s)=>a+(parseFloat(s.weeks)||0),0);
-        const phaseLate=ph.steps.some(s=>isStepLate(s,dates));
-        html += `<div class="gg-row">
-          <div class="gg-row-label" onclick="selectAndGoDetail('${inno.id}')" style="font-size:12px;color:var(--tx2);padding-left:28px">
-            <div style="width:3px;height:16px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>${esc(ph.name)}
-            <span style="margin-left:auto;font-size:11px;color:var(--tx3);flex-shrink:0">${totalPh}s</span>
-          </div>
-          <div class="gg-timeline" style="min-width:${totalWidth}px;position:relative">
-            <div class="gg-bar${phaseLate?' late-bar':''}" title="${esc(ph.name)}: ${fmtDate(pr.start)} → ${fmtDate(pr.end)}" style="left:${x}px;width:${w}px;background:${ph.color}" onclick="selectAndGoDetail('${inno.id}')">${esc(ph.name)}</div>
-            <div class="gg-today" style="left:${todayX}px"></div>
-          </div>
-        </div>`;
+        ph.steps.forEach(step=>{
+          const d=dates[step.id]||{};
+          const late=isStepLate(step,dates);
+          const x=d.start?weekX(d.start):null;
+          const x2=d.end?weekX(d.end):null;
+          const barW=x!==null&&x2!==null?Math.max(x2-x,COL):0;
+          const sm=statusMeta(step.status);
+          html+=`<div style="display:flex;border-bottom:1px solid var(--bd);min-height:30px" class="${late?'is-late':''}">
+            <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 16px 5px 28px;display:flex;flex-direction:column;justify-content:center">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="width:3px;height:12px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
+                <span style="font-size:12px;font-weight:500;color:${late?'var(--err)':'var(--tx)'}">${esc(step.name)}</span>
+                <span class="status-select ${late?'status-late':sm.cls}" style="font-size:10px;padding:1px 6px;border-radius:99px;margin-left:auto;white-space:nowrap">${late?'⚠ Late':sm.label}</span>
+              </div>
+              ${d.start?`<div style="font-size:10px;color:var(--tx3);margin-top:2px;padding-left:9px">${fmtDate(d.start)} → ${fmtDate(d.end)} · ${step.weeks}w</div>`:''}
+            </div>
+            <div style="flex:1;min-width:${totalW}px;position:relative">
+              ${x!==null&&barW>0?`<div style="position:absolute;top:50%;transform:translateY(-50%);left:${x}px;width:${barW}px;height:14px;border-radius:3px;background:${ph.color};opacity:${late?0.5:0.85};${late?'outline:2px solid var(--err);outline-offset:1px':''}" title="${esc(step.name)}: ${fmtDate(d.start)} → ${fmtDate(d.end)}"></div>`:''}
+              <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.4;pointer-events:none"></div>
+            </div>
+          </div>`;
+        });
       });
     });
   });
-  html += '</div>';
-  document.getElementById('globalGantt').innerHTML = html;
+
+  html+='</div>';
+  document.getElementById('globalGantt').innerHTML=html;
 }
 function selectAndGoDetail(id){
   S.selectedId=id; save();
