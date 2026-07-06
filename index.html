@@ -227,7 +227,43 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);font-si
   .nav-tab{padding:12px 10px;font-size:12px}
   .anchor-cards{grid-template-columns:1fr}
 }
-</style>
+/* PDF EXPORT */
+#pdf-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center}
+#pdf-overlay.open{display:flex}
+#pdf-modal{background:var(--s0);border-radius:14px;padding:28px;width:480px;max-width:94vw;max-height:88vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{background:#fff!important;font-family:'Inter',sans-serif}
+  .sync-banner,.nav,.nav-actions,#page-global,.page:not(#page-detail),
+  .retro-title-row button,.phase-actions,.del-step,.add-step-row,
+  #pdf-export-btn,#pdf-overlay,.notif,.overlay,
+  .anchor-box .anchor-cards,.anchor-box .anchor-date-row{display:none!important}
+  #page-detail{display:block!important;padding:0}
+  .two-col{display:block!important}
+  #innoList,.panel{display:none!important}
+  #detailPane{display:block!important;width:100%!important}
+  .retro-header{border:none!important;padding:0 0 12px 0!important;margin-bottom:12px!important}
+  .anchor-result{border:none!important;background:none!important;padding:4px 0!important;font-size:12px}
+  .alert-banner{break-inside:avoid}
+  .phase-block{break-inside:avoid;margin-bottom:10px!important;border:1px solid #ddd!important;border-radius:6px!important}
+  .phase-hd{background:#f5f5f5!important;padding:8px 12px!important}
+  .steps-table th{background:#f5f5f5!important;font-size:10px!important;padding:5px 8px!important}
+  .steps-table td{padding:5px 8px!important;font-size:11px!important}
+  .step-name-input,.step-note-input,.date-editable,.dur-input,.status-select{
+    border:none!important;background:none!important;font-size:11px!important;padding:0!important;width:auto!important}
+  .status-select{-webkit-appearance:none;appearance:none;border-radius:99px!important;padding:2px 6px!important;border:1px solid!important}
+  .dur-unit{font-size:11px}
+  .date-end{font-size:10px}
+  .phase-dates,.phase-title{font-size:12px}
+  .print-header{display:block!important}
+  @page{size:A4;margin:15mm 12mm}
+}
+.print-header{display:none;margin-bottom:20px;border-bottom:2px solid #c8102e;padding-bottom:12px}
+.print-header .print-logo{font-size:20px;font-weight:700;color:#c8102e}
+.print-header .print-meta{font-size:12px;color:#666;margin-top:4px}
+
+
 </head>
 <body>
 
@@ -254,6 +290,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);font-si
 </nav>
 
 <div class="page active" id="page-detail">
+  <!-- Print header (hidden on screen, visible on print) -->
+  <div class="print-header" id="print-header">
+    <div class="print-logo">UPSA Switzerland AG</div>
+    <div class="print-meta" id="print-meta"></div>
+  </div>
   <div class="two-col">
     <div>
       <div class="panel">
@@ -270,6 +311,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);font-si
         <p>Select an innovation to view its retroplanning</p>
         <button class="btn btn-primary" onclick="openNewInno()">+ Create your first innovation</button>
       </div>
+    </div>
+  </div>
+
+  <!-- PDF export button -->
+  <div id="pdf-export-btn" style="padding:20px 0 8px;display:flex;justify-content:center">
+    <button class="btn" onclick="openPdfPicker()" style="gap:8px;border-color:var(--acc);color:var(--acc);font-weight:600">🖨 Export retroplanning as PDF</button>
+  </div>
+</div>
+
+<!-- PDF Picker Modal -->
+<div id="pdf-overlay" onclick="closePdfPicker(event)">
+  <div id="pdf-modal">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:6px">Export as PDF</h2>
+    <p style="font-size:13px;color:var(--tx3);margin-bottom:18px">Select the innovation to export. The full retroplanning will open in a print-ready view.</p>
+    <div id="pdf-inno-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px"></div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn" onclick="document.getElementById('pdf-overlay').classList.remove('open')">Cancel</button>
     </div>
   </div>
 </div>
@@ -1180,6 +1238,64 @@ function selectAndGoDetail(id){
 // ─── MODAL HELPERS ────────────────────────────────────────────────────────────
 function closeModal(){document.getElementById('overlay').style.display='none';}
 function overlayBg(e){if(e.target.id==='overlay')closeModal();}
+
+// ─── PDF EXPORT ──────────────────────────────────────────────────────────────
+function openPdfPicker(){
+  const list = document.getElementById('pdf-inno-list');
+  if(!S.innovations.length){
+    list.innerHTML='<p style="font-size:13px;color:var(--tx3)">No innovations yet.</p>';
+  } else {
+    const order=[...CATEGORY_LIST,'Other'];
+    const grouped={};
+    S.innovations.forEach(inno=>{
+      const cat=CATEGORY_LIST.includes(inno.category)?inno.category:'Other';
+      if(!grouped[cat]) grouped[cat]=[];
+      grouped[cat].push(inno);
+    });
+    let html='';
+    order.filter(c=>grouped[c]).forEach(cat=>{
+      html+=`<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;padding:8px 0 4px">${esc(cat)}</div>`;
+      grouped[cat].forEach(inno=>{
+        const range=innoRange(inno);
+        html+=`<button onclick="exportPdf('${inno.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--bd);border-radius:var(--r);background:var(--s0);cursor:pointer;text-align:left;width:100%;font-family:inherit;transition:border-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--bd)'">
+          <div style="width:10px;height:10px;border-radius:50%;background:${inno.color};flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--tx)">${esc(inno.name)}</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px">${esc(inno.category)} · ${inno.resp}${range.start?' · '+fmtDate(range.start)+' → '+fmtDate(range.end):''}</div>
+          </div>
+          <span style="font-size:12px;color:var(--acc);flex-shrink:0">PDF →</span>
+        </button>`;
+      });
+    });
+    list.innerHTML=html;
+  }
+  document.getElementById('pdf-overlay').classList.add('open');
+}
+function closePdfPicker(e){
+  if(e.target.id==='pdf-overlay') document.getElementById('pdf-overlay').classList.remove('open');
+}
+function exportPdf(innoId){
+  // Select the innovation, switch to detail view, update print header, then print
+  S.selectedId=innoId;
+  renderInnoList();
+  renderDetail();
+  // Switch to detail tab if not already there
+  const detailTab=document.querySelector('.nav-tab');
+  if(detailTab && !detailTab.classList.contains('active')){
+    detailTab.click();
+  }
+  document.getElementById('pdf-overlay').classList.remove('open');
+  // Update print header
+  const inno=S.innovations.find(i=>i.id===innoId);
+  const range=innoRange(inno);
+  const totalW=inno.phases.flatMap(p=>p.steps).reduce((a,s)=>a+(parseFloat(s.weeks)||0),0);
+  const meta=document.getElementById('print-meta');
+  if(meta && inno){
+    meta.textContent=`${inno.name} · ${inno.category} · Owner: ${inno.resp} · ${range.start?fmtDate(range.start)+' → '+fmtDate(range.end):''} · ${totalW} weeks total · Exported ${fmtDate(todayStr())}`;
+  }
+  // Small delay to let render complete, then print
+  setTimeout(()=>window.print(), 200);
+}
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 (async function init(){
