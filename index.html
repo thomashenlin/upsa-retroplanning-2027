@@ -1080,20 +1080,34 @@ function renderGlobal(){
       const dates=computeDates(inno);
       const lateFlag=innoHasLateStep(inno);
       // Innovation header row
-      html+=`<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s1);cursor:pointer;min-height:${ROW_H}px" onclick="selectAndGoDetail('${inno.id}')">
-        <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd);overflow:hidden">
-          <div class="inno-dot" style="background:${inno.color};flex-shrink:0"></div>
-          <span style="font-size:12px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lateFlag?'⚠ ':''}${esc(inno.name)}</span>
-          <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="margin-left:auto;flex-shrink:0;font-size:10px">${inno.resp}</span>
+      html+=`<div style="display:flex;border-bottom:2px solid var(--bd2);background:var(--s0);cursor:pointer;min-height:36px;border-top:2px solid var(--bd2)" onclick="selectAndGoDetail('${inno.id}')">
+        <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:6px 12px;display:flex;align-items:center;gap:8px;border-right:1px solid var(--bd);overflow:hidden">
+          <div style="width:12px;height:12px;border-radius:50%;background:${inno.color};flex-shrink:0"></div>
+          <span style="font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em">${lateFlag?'⚠ ':''}${esc(inno.name)}</span>
         </div>
-        <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd)"></div>
+        <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd);padding:0 8px;display:flex;align-items:center">
+          <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="font-size:11px">${inno.resp}</span>
+        </div>
         <div style="flex:1;min-width:${totalW}px;position:relative">
           <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
         </div>
       </div>`;
 
-      // Step rows — single line
+      // Phase sub-headers + step rows
       inno.phases.forEach(ph=>{
+        // Phase sub-header row
+        html+=`<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s1);min-height:24px">
+          <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:3px 12px 3px 16px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd);overflow:hidden">
+            <div style="width:3px;height:16px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
+            <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ph.name)}</span>
+          </div>
+          <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd);padding:0 8px;display:flex;align-items:center">
+            <span style="font-size:10px;color:var(--tx3)">${ph.steps.reduce((a,s)=>a+(parseFloat(s.weeks)||0),0)}w total</span>
+          </div>
+          <div style="flex:1;min-width:${totalW}px;position:relative">
+            <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
+          </div>
+        </div>`;
         ph.steps.forEach(step=>{
           const d=dates[step.id]||{};
           const late=isStepLate(step,dates);
