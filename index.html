@@ -999,7 +999,8 @@ function renderGlobal(){
   while(wCur<=lastDate){ weeks.push(new Date(wCur)); wCur.setDate(wCur.getDate()+7); }
 
   const COL=36;
-  const LABEL_W=220;
+  const LABEL_W=200;
+  const DATE_W=140;
   const ROW_H=28;
   const totalW=weeks.length*COL;
   const todayISO=todayStr();
@@ -1048,7 +1049,7 @@ function renderGlobal(){
   <div style="min-width:${LABEL_W+totalW}px">
 
   <div style="display:flex;position:sticky;top:0;z-index:20;background:var(--s1);border-bottom:1px solid var(--bd)">
-    <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Step</div>
+    <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Step</div><div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Start → End · Wks</div>
     <div style="flex:1">
       <div style="display:flex;border-bottom:1px solid var(--bd)">
         ${monthSpans.map(ms=>`<div style="width:${ms.count*COL}px;font-size:11px;font-weight:600;color:var(--tx2);padding:4px 6px;border-right:1px solid var(--bd);white-space:nowrap;overflow:hidden;flex-shrink:0">${ms.label}</div>`).join('')}
@@ -1085,6 +1086,7 @@ function renderGlobal(){
           <span style="font-size:12px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lateFlag?'⚠ ':''}${esc(inno.name)}</span>
           <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="margin-left:auto;flex-shrink:0;font-size:10px">${inno.resp}</span>
         </div>
+        <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd)"></div>
         <div style="flex:1;min-width:${totalW}px;position:relative">
           <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
         </div>
@@ -1105,6 +1107,10 @@ function renderGlobal(){
               <div style="width:3px;height:14px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
               <span style="font-size:11px;font-weight:500;color:${late?'var(--err)':'var(--tx2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1" title="${esc(step.name)}">${pinnedIcon}${esc(step.name)}</span>
               <span class="${late?'status-late':sm.cls}" style="font-size:10px;padding:1px 5px;border-radius:99px;border:1px solid;flex-shrink:0;white-space:nowrap">${late?'Late':sm.label}</span>
+            </div>
+            <div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;border-right:1px solid var(--bd);display:flex;flex-direction:column;justify-content:center;overflow:hidden">
+              ${d.start?`<span style="font-size:10px;color:${late?'var(--err)':'var(--tx2)'};white-space:nowrap;font-weight:500">${fmtDate(d.start)} → ${fmtDate(d.end)}</span>`:'<span style="font-size:10px;color:var(--tx3)">—</span>'}
+              ${d.start?`<span style="font-size:10px;color:var(--tx3);white-space:nowrap">${step.weeks}w${step.startOverride?' 📌':''}</span>`:''}
             </div>
             <div style="flex:1;min-width:${totalW}px;position:relative">
               ${x!==null&&barW>0?`<div style="position:absolute;top:50%;transform:translateY(-50%);left:${x}px;width:${barW}px;height:12px;border-radius:3px;background:${ph.color};opacity:${late?0.4:0.85};${late?'outline:1.5px solid var(--err);outline-offset:1px':''}" title="${esc(step.name)}: ${fmtDate(d.start)} → ${fmtDate(d.end)} · ${step.weeks}w"></div>`:''}
