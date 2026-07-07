@@ -295,37 +295,6 @@ function exportPdf(innoId){
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
-(async function init(){
-  // Auth gate — show login if not authenticated
-  const authed = await initAuth();
-  if (!authed) return; // loginScreen shown, render happens after login
-
-  await loadSmcSettings();
-  S = await loadState();
-  setSyncStatus(storageReady);
-  renderInnoList();
-  renderDetail();
-
-  // Light polling so teammates see updates without manual refresh
-  if(supa){
-    setInterval(async ()=>{
-      try{
-        const { data, error } = await supa.from('retroplanning_state').select('data').eq('id','shared').single();
-        if(!error && data && data.data){
-          const incoming = JSON.stringify(data.data);
-          const current = JSON.stringify(S);
-          if(incoming !== current){
-            S = data.data;
-            renderInnoList();
-            renderDetail();
-            if(document.getElementById('page-global').classList.contains('active')) renderGlobal();
-            setSyncStatus(true);
-          }
-        }
-      }catch(e){}
-    }, 8000);
-  }
-})();
 function quickUpdateStatus(innoId, phId, stepId, newStatus) {
   const inno = S.innovations.find(i=>i.id===innoId);
   if (!inno) return;

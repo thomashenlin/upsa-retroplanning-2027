@@ -163,6 +163,34 @@
 <script src="js/changelog.js"></script>
 <script src="js/settings.js"></script>
 
+<script>
+(async function init(){
+  const authed = await initAuth();
+  if (!authed) return;
+  await loadSmcSettings();
+  S = await loadState();
+  setSyncStatus(storageReady);
+  renderInnoList();
+  renderDetail();
+  if(supa){
+    setInterval(async ()=>{
+      try{
+        const { data, error } = await supa.from('retroplanning_state').select('data').eq('id','shared').single();
+        if(!error && data && data.data){
+          const incoming = JSON.stringify(data.data);
+          const current = JSON.stringify(S);
+          if(incoming !== current){
+            S = data.data;
+            renderInnoList();
+            renderDetail();
+            if(document.getElementById('page-global').classList.contains('active')) renderGlobal();
+            setSyncStatus(true);
+          }
+        }
+      }catch(e){}
+    }, 8000);
+  }
+})();
+</script>
 </body>
 </html>
-<!-- deploy 1783406552 -->
