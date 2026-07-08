@@ -90,8 +90,8 @@ function renderGlobal(){
     <button class="btn btn-sm btn-ghost" onclick="ganttScroll(4)" title="Scroll right">▶▶</button>
     <button class="btn btn-sm" onclick="ganttScrollToToday()" style="border-color:var(--acc);color:var(--acc);font-size:11px">Today</button>
   </div>
-  <div id="gantt-scroll-wrap" style="overflow-x:auto;overflow-y:visible">
-  <div style="min-width:${LABEL_W+totalW}px">
+  <div id="gantt-scroll-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 200px);scrollbar-width:thin">
+  <div style="min-width:${LABEL_W+DATE_W+totalW}px;display:inline-block;min-height:100%">
 
   <div style="display:flex;position:sticky;top:0;z-index:20;background:var(--s1);border-bottom:1px solid var(--bd)">
     <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Step</div><div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Start → End · Wks</div>
