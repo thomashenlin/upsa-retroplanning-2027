@@ -20,7 +20,7 @@ async function logChange(innoId, innoName, action, field, oldVal, newVal) {
 async function validateInnovation(innoId) {
   const inno = S.innovations.find(i => i.id === innoId);
   if (!inno) return;
-  if (!confirm(`Validate "${inno.name}"? After validation, all changes will be logged in the history. You can still edit but every modification will be recorded.`)) return;
+  if (!confirm(`Validate "${inno.name}"?\n\nThis marks the retroplanning as officially approved. From this point, every change (dates, durations, status) will be logged in the history with who made it and when.\n\nYou can still edit after validation — all changes will simply be recorded.`)) return;
   inno.status = 'active';
   inno.validatedAt = new Date().toISOString();
   inno.validatedBy = currentUser?.email || 'unknown';

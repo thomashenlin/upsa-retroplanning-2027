@@ -162,7 +162,8 @@ function renderDetail(){
       }
       <button class="btn btn-sm btn-ghost edit-only" onclick="openEditInno('${inno.id}')">✏ Edit</button>
       ${inno.status!=='active'
-        ? `<button class="btn btn-sm edit-only" style="border-color:var(--ok);color:var(--ok)" onclick="validateInnovation('${inno.id}')">✓ Validate</button>`
+        ? `<button class="btn btn-sm edit-only" style="border-color:var(--bd2);color:var(--tx2)" onclick="notify('Draft saved — view the Gantt in Overview anytime.')">💾 Save draft</button>
+           <button class="btn btn-sm edit-only" style="border-color:var(--ok);color:var(--ok)" onclick="validateInnovation('${inno.id}')">✓ Validate</button>`
         : `<button class="btn btn-sm btn-ghost" onclick="renderChangeLog('${inno.id}')">📋 History</button>`
       }
       <button class="btn btn-sm btn-danger edit-only" onclick="deleteInno('${inno.id}')">🗑</button>
