@@ -254,7 +254,6 @@ function renderPhaseBlock(inno, ph, pi, dates, pr){
         <td class="step-name-cell">
           <input class="step-name-input" value="${esc(step.name)}" onchange="updateStep('${inno.id}','${ph.id}','${step.id}','name',this.value)" placeholder="Step name">
           <input class="step-note-input" value="${esc(step.note||'')}" onchange="updateStep('${inno.id}','${ph.id}','${step.id}','note',this.value)" placeholder="Note, condition, contact…">
-          ${step.owner?`<div style="margin-top:3px"><span class="badge ${RESP_CLS[step.owner]||'badge-ext'}" style="font-size:10px">${esc(step.owner)}</span></div>`:''}
         </td>
         <td class="status-cell">
           <select class="status-select ${late?'status-late':sm.cls}" onchange="updateStep('${inno.id}','${ph.id}','${step.id}','status',this.value)">
