@@ -52,12 +52,13 @@ function renderGlobal(){
         <option value="all" ${prevFilter==='all'?'selected':''}>All categories</option>
         ${cats.map(c=>`<option value="${esc(c)}" ${prevFilter===c?'selected':''}>${esc(c)} (${grouped[c].length})</option>`).join('')}
       </select>
-      <div id="gantt-nav" style="display:flex;align-items:center;gap:6px;margin-left:auto">
-        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-4)">◀◀</button>
-        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-1)">◀</button>
-        <button class="btn btn-sm" onclick="ganttScrollToToday()" style="border-color:var(--acc);color:var(--acc);font-size:11px">Today</button>
-        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(1)">▶</button>
-        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(4)">▶▶</button>
+      <div id="gantt-nav" style="display:flex;align-items:center;gap:8px;flex:1;margin-left:16px;min-width:0">
+        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-4)" style="flex-shrink:0" title="4 weeks left">◀</button>
+        <div style="flex:1;position:relative;height:6px;background:var(--bd);border-radius:99px;cursor:pointer;min-width:60px" id="gantt-scrolltrack" onclick="ganttScrollTrackClick(event)">
+          <div id="gantt-scrollthumb" style="position:absolute;top:0;height:6px;background:var(--acc);border-radius:99px;min-width:30px;opacity:.6;pointer-events:none"></div>
+        </div>
+        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(4)" style="flex-shrink:0" title="4 weeks right">▶</button>
+        <button class="btn btn-sm" onclick="ganttScrollToToday()" style="border-color:var(--acc);color:var(--acc);font-size:11px;flex-shrink:0">Today</button>
       </div>
     </div>`;
 
@@ -253,14 +254,11 @@ function renderGlobal(){
 
 function ganttScroll(weeks){
   const wrap=document.getElementById('gantt-scroll-wrap');
-  if(wrap) wrap.scrollLeft+=weeks*36;
+  if(wrap){ wrap.scrollLeft+=weeks*36; updateGanttThumb(wrap); }
 }
 function ganttScrollToToday(){
   const wrap=document.getElementById('gantt-scroll-wrap');
   if(!wrap) return;
-  // Find today line position
-  const todayLine=wrap.querySelector('[style*="left:"]');
-  // Compute from first innovation dates
   const allDates=[];
   S.innovations.forEach(inno=>{
     const dates=computeDates(inno);
@@ -277,6 +275,27 @@ function ganttScrollToToday(){
   const diffDays=(today-firstMon)/86400000;
   const x=Math.max(0,Math.round((diffDays/7)*36));
   wrap.scrollLeft=Math.max(0, x - wrap.clientWidth/2);
+  updateGanttThumb(wrap);
+}
+function updateGanttThumb(wrap){
+  const track=document.getElementById('gantt-scrolltrack');
+  const thumb=document.getElementById('gantt-scrollthumb');
+  if(!track||!thumb||!wrap) return;
+  const ratio=wrap.clientWidth/wrap.scrollWidth;
+  const thumbW=Math.max(track.clientWidth*ratio, 30);
+  const maxScroll=wrap.scrollWidth-wrap.clientWidth;
+  const pos=maxScroll>0?(wrap.scrollLeft/maxScroll)*(track.clientWidth-thumbW):0;
+  thumb.style.width=thumbW+'px';
+  thumb.style.left=pos+'px';
+}
+function ganttScrollTrackClick(e){
+  const wrap=document.getElementById('gantt-scroll-wrap');
+  const track=document.getElementById('gantt-scrolltrack');
+  if(!wrap||!track) return;
+  const rect=track.getBoundingClientRect();
+  const pct=(e.clientX-rect.left)/rect.width;
+  wrap.scrollLeft=pct*(wrap.scrollWidth-wrap.clientWidth);
+  updateGanttThumb(wrap);
 }
 
 function selectAndGoDetail(id){
@@ -368,7 +387,7 @@ function quickUpdateStatus(innoId, phId, stepId, newStatus) {
 }
 
 function syncGanttScroll(rightEl) {
-  // Sync vertical scroll of right panel to left panel
   const leftScroll = document.getElementById('gantt-left-scroll');
   if (leftScroll) leftScroll.scrollTop = rightEl.scrollTop;
+  updateGanttThumb(rightEl);
 }
