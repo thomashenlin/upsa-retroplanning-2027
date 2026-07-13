@@ -15,8 +15,60 @@ function renderGlobal(){
     return;
   }
 
-  const allDates=[];
+  // ── LAUNCH DATE SUMMARY BAR ──
+  const launchItems = S.innovations.map(inno=>{
+    const range = innoRange(inno);
+    const late = innoHasLateStep(inno);
+    return {inno, end: range.end, late};
+  }).filter(x=>x.end).sort((a,b)=>a.end.localeCompare(b.end));
+
+  const launchBar = launchItems.length ? `
+    <div id="launch-summary" style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;background:var(--s1);border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:thin">
+      ${launchItems.map(({inno,end,late})=>`
+        <div style="display:flex;align-items:center;gap:6px;background:var(--s0);border:1px solid ${late?'var(--err)':'var(--bd)'};border-radius:8px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0" onclick="selectAndGoDetail('${inno.id}')">
+          <div style="width:8px;height:8px;border-radius:50%;background:${inno.color}"></div>
+          <span style="font-size:12px;font-weight:600;color:var(--tx)">${esc(inno.name)}</span>
+          <span style="font-size:11px;color:${late?'var(--err)':'var(--tx3)'}">${late?'⚠ ':''} ${fmtDate(end)}</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  // ── CATEGORY FILTER ──
+  const order=[...CATEGORY_LIST,'Other'];
+  const grouped={};
   S.innovations.forEach(inno=>{
+    const cat=CATEGORY_LIST.includes(inno.category)?inno.category:'Other';
+    if(!grouped[cat]) grouped[cat]=[];
+    grouped[cat].push(inno);
+  });
+  const cats=order.filter(c=>grouped[c]);
+
+  // Active filter (stored on element)
+  const prevFilter = document.getElementById('gantt-cat-filter')?.value || 'all';
+
+  const filterBar = `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--bd);background:var(--s0);flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em">Filter:</span>
+      <select id="gantt-cat-filter" onchange="renderGlobal()" style="font-size:12px;padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-family:inherit;background:var(--s0);color:var(--tx);cursor:pointer">
+        <option value="all" ${prevFilter==='all'?'selected':''}>All categories</option>
+        ${cats.map(c=>`<option value="${esc(c)}" ${prevFilter===c?'selected':''}>${esc(c)} (${grouped[c].length})</option>`).join('')}
+      </select>
+      <div id="gantt-nav" style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-4)">◀◀</button>
+        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-1)">◀</button>
+        <button class="btn btn-sm" onclick="ganttScrollToToday()" style="border-color:var(--acc);color:var(--acc);font-size:11px">Today</button>
+        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(1)">▶</button>
+        <button class="btn btn-sm btn-ghost" onclick="ganttScroll(4)">▶▶</button>
+      </div>
+    </div>`;
+
+  // Active filter value
+  const activeFilter = prevFilter;
+  const visibleCats = activeFilter==='all' ? cats : cats.filter(c=>c===activeFilter);
+  const visibleInnovations = visibleCats.flatMap(c=>grouped[c]);
+
+  // ── DATE RANGE ──
+  const allDates=[];
+  visibleInnovations.forEach(inno=>{
     const dates=computeDates(inno);
     inno.phases.forEach(ph=>ph.steps.forEach(s=>{
       const d=dates[s.id];
@@ -24,29 +76,24 @@ function renderGlobal(){
       if(d?.end) allDates.push(d.end);
     }));
   });
-  if(!allDates.length){ document.getElementById('globalGantt').innerHTML=''; return; }
+  if(!allDates.length){
+    document.getElementById('globalGantt').innerHTML=launchBar+filterBar+'<div class="empty-state"><div class="icon">📅</div><p>No innovations to display</p></div>';
+    return;
+  }
   allDates.sort();
 
   function mondayOf(dateStr){
-    const d=new Date(dateStr);
-    const day=d.getDay();
-    const diff=d.getDate()-(day===0?6:day-1);
-    return new Date(d.setDate(diff));
+    const d=new Date(dateStr); const day=d.getDay();
+    const diff=d.getDate()-(day===0?6:day-1); return new Date(d.setDate(diff));
   }
   function toISO(d){ return d.toISOString().slice(0,10); }
-
   const firstMon=mondayOf(allDates[0]);
   const lastDate=new Date(allDates[allDates.length-1]);
   lastDate.setDate(lastDate.getDate()+14);
-
-  const weeks=[];
-  let wCur=new Date(firstMon);
+  const weeks=[]; let wCur=new Date(firstMon);
   while(wCur<=lastDate){ weeks.push(new Date(wCur)); wCur.setDate(wCur.getDate()+7); }
 
-  const COL=36;
-  const LABEL_W=200;
-  const DATE_W=140;
-  const ROW_H=28;
+  const COL=36, LABEL_W=200, DATE_W=140, ROW_H=28, FIXED_W=LABEL_W+DATE_W;
   const totalW=weeks.length*COL;
   const todayISO=todayStr();
 
@@ -60,140 +107,149 @@ function renderGlobal(){
     const jan1=new Date(d.getFullYear(),0,1);
     return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
   }
-
   const todayX=weekX(todayISO);
 
-  const order=[...CATEGORY_LIST,'Other'];
-  const grouped={};
-  S.innovations.forEach(inno=>{
-    const cat=CATEGORY_LIST.includes(inno.category)?inno.category:'Other';
-    if(!grouped[cat]) grouped[cat]=[];
-    grouped[cat].push(inno);
-  });
-  const cats=order.filter(c=>grouped[c]);
-
-  // Month spans for header
   let monthSpans=[];
   weeks.forEach((w,i)=>{
     const key=`${w.getFullYear()}-${w.getMonth()}`;
     if(!monthSpans.length||monthSpans[monthSpans.length-1].key!==key)
-      monthSpans.push({key,label:`${MONTHS_SHORT[w.getMonth()]} ${w.getFullYear()}`,start:i,count:1});
+      monthSpans.push({key,label:`${MONTHS_SHORT[w.getMonth()]} ${w.getFullYear()}`,count:1});
     else monthSpans[monthSpans.length-1].count++;
   });
 
-  let html=`
-  <div id="gantt-nav" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--bd);background:var(--s0)">
-    <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-4)" title="Scroll left">◀◀</button>
-    <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-1)" title="One week left">◀</button>
-    <span style="font-size:12px;color:var(--tx3);flex:1;text-align:center">Scroll timeline</span>
-    <button class="btn btn-sm btn-ghost" onclick="ganttScroll(1)" title="One week right">▶</button>
-    <button class="btn btn-sm btn-ghost" onclick="ganttScroll(4)" title="Scroll right">▶▶</button>
-    <button class="btn btn-sm" onclick="ganttScrollToToday()" style="border-color:var(--acc);color:var(--acc);font-size:11px">Today</button>
-  </div>
-  <div id="gantt-scroll-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 200px);scrollbar-width:thin">
-  <div style="min-width:${LABEL_W+DATE_W+totalW}px;display:inline-block;min-height:100%">
+  // ── BUILD HTML ──
+  // Use a two-panel approach: left fixed panel + right scrollable timeline
+  // We build them in sync then join
+  let leftRows = '';
+  let rightRows = '';
 
-  <div style="display:flex;position:sticky;top:0;z-index:20;background:var(--s1);border-bottom:1px solid var(--bd)">
-    <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Step</div><div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Start → End · Wks</div>
-    <div style="flex:1">
-      <div style="display:flex;border-bottom:1px solid var(--bd)">
-        ${monthSpans.map(ms=>`<div style="width:${ms.count*COL}px;font-size:11px;font-weight:600;color:var(--tx2);padding:4px 6px;border-right:1px solid var(--bd);white-space:nowrap;overflow:hidden;flex-shrink:0">${ms.label}</div>`).join('')}
-      </div>
-      <div style="display:flex">
-        ${weeks.map(w=>{
-          const iso=toISO(w);
-          const isNow=iso<=todayISO&&todayISO<toISO(new Date(w.getTime()+7*86400000));
-          return `<div style="width:${COL}px;font-size:9px;color:${isNow?'var(--acc)':'var(--tx3)'};font-weight:${isNow?700:400};text-align:center;padding:3px 0;border-right:1px solid var(--bd);flex-shrink:0;background:${isNow?'var(--acc-bg)':''}">W${getWeekNum(w)}</div>`;
-        }).join('')}
-      </div>
+  // Header row
+  const headerLeft = `<div style="display:flex;height:52px;background:var(--s1);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:30">
+    <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd)">Step</div>
+    <div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;font-size:10px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:flex-end;padding-bottom:4px;border-right:1px solid var(--bd2)">Start → End · Wks</div>
+  </div>`;
+
+  const headerRight = `<div style="min-width:${totalW}px;height:52px;background:var(--s1);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:30">
+    <div style="display:flex;height:26px;border-bottom:1px solid var(--bd)">
+      ${monthSpans.map(ms=>`<div style="width:${ms.count*COL}px;font-size:11px;font-weight:600;color:var(--tx2);padding:4px 6px;border-right:1px solid var(--bd);white-space:nowrap;overflow:hidden;flex-shrink:0">${ms.label}</div>`).join('')}
+    </div>
+    <div style="display:flex;height:26px">
+      ${weeks.map(w=>{
+        const iso=toISO(w);
+        const isNow=iso<=todayISO&&todayISO<toISO(new Date(w.getTime()+7*86400000));
+        return `<div style="width:${COL}px;font-size:9px;color:${isNow?'var(--acc)':'var(--tx3)'};font-weight:${isNow?700:400};text-align:center;padding:3px 0;border-right:1px solid var(--bd);flex-shrink:0;background:${isNow?'var(--acc-bg)':''}">W${getWeekNum(w)}</div>`;
+      }).join('')}
     </div>
   </div>`;
 
-  cats.forEach(cat=>{
+  function addRow(leftHtml, rightHtml, rowStyle='') {
+    leftRows += `<div style="display:flex;border-bottom:1px solid var(--bd);min-height:${ROW_H}px${rowStyle?';'+rowStyle:''}">${leftHtml}</div>`;
+    rightRows += `<div style="min-width:${totalW}px;border-bottom:1px solid var(--bd);min-height:${ROW_H}px;position:relative${rowStyle?';'+rowStyle:''}">
+      ${rightHtml}
+      <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
+    </div>`;
+  }
+
+  visibleCats.forEach(cat=>{
     const catInno=grouped[cat];
     const catLate=catInno.filter(innoHasLateStep).length;
-    html+=`<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s2);position:sticky;top:52px;z-index:10">
-      <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd)">
+    // Category header
+    addRow(
+      `<div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd)">
         ${esc(cat)}<span style="font-weight:400;color:var(--tx3)">${catInno.length}</span>${catLate?`<span style="color:var(--err);font-size:10px">⚠ ${catLate} late</span>`:''}
       </div>
-      <div style="flex:1;min-width:${totalW}px;position:relative;height:28px">
-        <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
-      </div>
-    </div>`;
+      <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd2)"></div>`,
+      '',
+      'background:var(--s2)'
+    );
 
     catInno.forEach(inno=>{
       const dates=computeDates(inno);
       const lateFlag=innoHasLateStep(inno);
-      // Innovation header row
-      html+=`<div style="display:flex;border-bottom:2px solid var(--bd2);background:var(--s0);cursor:pointer;min-height:36px;border-top:2px solid var(--bd2)" onclick="selectAndGoDetail('${inno.id}')">
-        <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:6px 12px;display:flex;align-items:center;gap:8px;border-right:1px solid var(--bd);overflow:hidden">
-          <div style="width:12px;height:12px;border-radius:50%;background:${inno.color};flex-shrink:0"></div>
-          <span style="font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em">${lateFlag?'⚠ ':''}${esc(inno.name)}</span>
+      const range=innoRange(inno);
+      // Innovation header
+      addRow(
+        `<div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd);overflow:hidden;cursor:pointer" onclick="selectAndGoDetail('${inno.id}')">
+          <div style="width:10px;height:10px;border-radius:50%;background:${inno.color};flex-shrink:0"></div>
+          <span style="font-size:12px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lateFlag?'⚠ ':''}${esc(inno.name)}</span>
         </div>
-        <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd);padding:0 8px;display:flex;align-items:center">
-          <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="font-size:11px">${inno.resp}</span>
-        </div>
-        <div style="flex:1;min-width:${totalW}px;position:relative">
-          <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
-        </div>
-      </div>`;
+        <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd2);padding:0 8px;display:flex;align-items:center;gap:4px;overflow:hidden">
+          <span class="badge ${RESP_CLS[inno.resp]||'badge-gray'}" style="font-size:10px;flex-shrink:0">${inno.resp}</span>
+          ${range.end?`<span style="font-size:11px;font-weight:600;color:${lateFlag?'var(--err)':'var(--tx2)'};white-space:nowrap">→ ${fmtDate(range.end)}</span>`:''}
+        </div>`,
+        '',
+        'background:var(--s1)'
+      );
 
-      // Phase sub-headers + step rows
       inno.phases.forEach(ph=>{
-        // Phase sub-header row
-        html+=`<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s1);min-height:24px">
-          <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:3px 12px 3px 16px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd);overflow:hidden">
-            <div style="width:3px;height:16px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
-            <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ph.name)}</span>
+        // Phase sub-header
+        addRow(
+          `<div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:3px 12px 3px 16px;display:flex;align-items:center;gap:5px;border-right:1px solid var(--bd);overflow:hidden">
+            <div style="width:3px;height:14px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
+            <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ph.name)}</span>
           </div>
-          <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd);padding:0 8px;display:flex;align-items:center">
+          <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd2);padding:0 8px;display:flex;align-items:center">
             <span style="font-size:10px;color:var(--tx3)">${ph.steps.reduce((a,s)=>a+(parseFloat(s.weeks)||0),0)}w total</span>
-          </div>
-          <div style="flex:1;min-width:${totalW}px;position:relative">
-            <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
-          </div>
-        </div>`;
+          </div>`,
+          ''
+        );
+
         ph.steps.forEach(step=>{
           const d=dates[step.id]||{};
           const late=isStepLate(step,dates);
+          const sm=statusMeta(step.status);
           const x=d.start?weekX(d.start):null;
           const x2=d.end?weekX(d.end):null;
           const barW=x!==null&&x2!==null?Math.max(x2-x,8):0;
-          const sm=statusMeta(step.status);
           const pinnedIcon=step.startOverride?'📌 ':'';
-          html+=`<div style="display:flex;border-bottom:1px solid var(--bd);height:${ROW_H}px;${late?'background:var(--err-bg)':''}">
-            <div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px 0 20px;display:flex;align-items:center;gap:5px;border-right:1px solid var(--bd);overflow:hidden">
-              <div style="width:3px;height:14px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
+          addRow(
+            `<div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:0 12px 0 20px;display:flex;align-items:center;gap:5px;border-right:1px solid var(--bd);overflow:hidden${late?';background:var(--err-bg)':''}">
+              <div style="width:3px;height:12px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
               <span style="font-size:11px;font-weight:500;color:${late?'var(--err)':'var(--tx2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1" title="${esc(step.name)}">${pinnedIcon}${esc(step.name)}</span>
-              <select class="${late?'status-late':sm.cls}" 
+              <select class="${late?'status-late':sm.cls}"
                 style="font-size:10px;padding:2px 5px;border-radius:99px;border:1px solid;flex-shrink:0;white-space:nowrap;cursor:pointer;font-family:inherit;font-weight:500;-webkit-appearance:none;appearance:none;background:transparent"
-                onchange="quickUpdateStatus('${inno.id}','${ph.id}','${step.id}',this.value);this.className=statusMeta(this.value).cls;event.stopPropagation()"
-                onclick="event.stopPropagation()"
-                title="Click to change status">
+                onchange="quickUpdateStatus('${inno.id}','${ph.id}','${step.id}',this.value);event.stopPropagation()"
+                onclick="event.stopPropagation()">
                 ${late?`<option value="todo" selected>⚠ Late</option>`:''}
                 ${STEP_STATUSES.map(s=>`<option value="${s.v}" ${step.status===s.v?'selected':''}>${s.label}</option>`).join('')}
               </select>
             </div>
-            <div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;border-right:1px solid var(--bd);display:flex;flex-direction:column;justify-content:center;overflow:hidden">
+            <div style="width:${DATE_W}px;min-width:${DATE_W}px;padding:0 8px;border-right:1px solid var(--bd2);display:flex;flex-direction:column;justify-content:center;overflow:hidden${late?';background:var(--err-bg)':''}">
               ${d.start?`<span style="font-size:10px;color:${late?'var(--err)':'var(--tx2)'};white-space:nowrap;font-weight:500">${fmtDate(d.start)} → ${fmtDate(d.end)}</span>`:'<span style="font-size:10px;color:var(--tx3)">—</span>'}
               ${d.start?`<span style="font-size:10px;color:var(--tx3);white-space:nowrap">${step.weeks}w${step.startOverride?' 📌':''}</span>`:''}
-            </div>
-            <div style="flex:1;min-width:${totalW}px;position:relative">
-              ${x!==null&&barW>0?`<div style="position:absolute;top:50%;transform:translateY(-50%);left:${x}px;width:${barW}px;height:12px;border-radius:3px;background:${ph.color};opacity:${late?0.4:0.85};${late?'outline:1.5px solid var(--err);outline-offset:1px':''}" title="${esc(step.name)}: ${fmtDate(d.start)} → ${fmtDate(d.end)} · ${step.weeks}w"></div>`:''}
-              <div style="position:absolute;top:0;bottom:0;left:${todayX}px;width:2px;background:#e34948;opacity:.35;pointer-events:none"></div>
-            </div>
-          </div>`;
+            </div>`,
+            x!==null&&barW>0?`<div style="position:absolute;top:50%;transform:translateY(-50%);left:${x}px;width:${barW}px;height:12px;border-radius:3px;background:${ph.color};opacity:${late?0.4:0.85};${late?'outline:1.5px solid var(--err);outline-offset:1px':''}" title="${esc(step.name)}: ${fmtDate(d.start)} → ${fmtDate(d.end)} · ${step.weeks}w"></div>`:''
+          );
         });
       });
     });
   });
 
-  html+='</div></div>';
-  document.getElementById('globalGantt').innerHTML=html;
+  // Build final layout: fixed left + scrollable right, both same rows
+  const ganttHtml = `
+  ${launchBar}
+  ${filterBar}
+  <div style="display:flex;overflow:hidden">
+    <!-- Fixed left columns -->
+    <div style="flex-shrink:0;width:${FIXED_W}px;overflow:hidden;z-index:10;box-shadow:3px 0 8px rgba(0,0,0,.08)">
+      ${headerLeft}
+      <div id="gantt-left-scroll" style="overflow:hidden;max-height:calc(100vh - 260px)">
+        ${leftRows}
+      </div>
+    </div>
+    <!-- Scrollable right timeline -->
+    <div id="gantt-scroll-wrap" style="flex:1;overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 260px);scrollbar-width:thin" onscroll="syncGanttScroll(this)">
+      ${headerRight}
+      <div id="gantt-right-rows">
+        ${rightRows}
+      </div>
+    </div>
+  </div>`;
 
-  // Scroll to today on load
+  document.getElementById('globalGantt').innerHTML=ganttHtml;
   requestAnimationFrame(()=>ganttScrollToToday());
 }
+
 
 function ganttScroll(weeks){
   const wrap=document.getElementById('gantt-scroll-wrap');
@@ -309,4 +365,10 @@ function quickUpdateStatus(innoId, phId, stepId, newStatus) {
   renderInnoList();
   // Re-render global to update late flags without full page reload
   renderGlobal();
+}
+
+function syncGanttScroll(rightEl) {
+  // Sync vertical scroll of right panel to left panel
+  const leftScroll = document.getElementById('gantt-left-scroll');
+  if (leftScroll) leftScroll.scrollTop = rightEl.scrollTop;
 }
