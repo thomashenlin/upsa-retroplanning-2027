@@ -27,7 +27,7 @@ function renderGlobal(){
   const launchBar = launchItems.length ? `
     <div id="launch-summary" style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;background:var(--s1);border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:thin">
       ${launchItems.map(({inno,end,late})=>`
-        <div style="display:flex;align-items:center;gap:6px;background:var(--s0);border:1px solid ${late?'var(--err)':'var(--bd)'};border-radius:8px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0" onclick="filterGanttToInno('${inno.id}')">
+        <div data-inno-filter="${inno.id}" style="display:flex;align-items:center;gap:6px;background:var(--s0);border:1px solid ${late?'var(--err)':'var(--bd)'};border-radius:8px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0">
           <div style="width:8px;height:8px;border-radius:50%;background:${inno.color}"></div>
           <span style="font-size:12px;font-weight:600;color:var(--tx)">${esc(inno.name)}</span>
           <span style="font-size:11px;color:${late?'var(--err)':'var(--tx3)'}">${late?'⚠ ':''} ${fmtDate(end)}</span>
@@ -184,8 +184,7 @@ function renderGlobal(){
       const range=innoRange(inno);
       // Innovation header
       addRow(
-        `<div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd);overflow:hidden;cursor:pointer" onclick="selectAndGoDetail('${inno.id}')">
-          <div style="width:10px;height:10px;border-radius:50%;background:${inno.color};flex-shrink:0"></div>
+        `<div style="width:${LABEL_W}px;min-width:${LABEL_W}px;padding:5px 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--bd);overflow:hidden;cursor:pointer" data-goto-inno="${inno.id}">     <div style="width:10px;height:10px;border-radius:50%;background:${inno.color};flex-shrink:0"></div>
           <span style="font-size:12px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lateFlag?'⚠ ':''}${esc(inno.name)}</span>
         </div>
         <div style="width:${DATE_W}px;min-width:${DATE_W}px;border-right:1px solid var(--bd2);padding:0 8px;display:flex;align-items:center;gap:4px;overflow:hidden">
@@ -262,6 +261,24 @@ function renderGlobal(){
   </div>`;
 
   document.getElementById('globalGantt').innerHTML=ganttHtml;
+
+  // Event delegation for launch bar chips
+  const launchSummary = document.getElementById('launch-summary');
+  if(launchSummary){
+    launchSummary.addEventListener('click', e=>{
+      const chip = e.target.closest('[data-inno-filter]');
+      if(chip) filterGanttToInno(chip.dataset.innoFilter);
+    });
+  }
+  // Event delegation for innovation name rows -> go to detail
+  const ganttLeftScroll = document.getElementById('gantt-left-scroll');
+  if(ganttLeftScroll){
+    ganttLeftScroll.addEventListener('click', e=>{
+      const row = e.target.closest('[data-goto-inno]');
+      if(row) selectAndGoDetail(row.dataset.gotoInno);
+    });
+  }
+
   requestAnimationFrame(()=>ganttScrollToToday());
 }
 
