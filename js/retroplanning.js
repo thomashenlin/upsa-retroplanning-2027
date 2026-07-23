@@ -469,6 +469,7 @@ function openEditInno(id){
   const respOpts=RESP_LIST.map(r=>`<option value="${r}"${inno.resp===r?' selected':''}>${r}</option>`).join('');
   const catList = CATEGORY_LIST.includes(inno.category) ? CATEGORY_LIST : [inno.category, ...CATEGORY_LIST];
   const catOpts = catList.map(c=>`<option value="${esc(c)}"${inno.category===c?' selected':''}>${esc(c)}</option>`).join('');
+  const swatches = PHASE_COLORS.map(c=>`<div class="color-swatch${inno.color===c?' selected':''}" style="background:${c}" onclick="document.getElementById('in-color').value='${c}';document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"></div>`).join('');
   document.getElementById('modalBox').innerHTML=`
     <h2>Edit innovation</h2>
     <div class="form-row"><label>Name</label><input id="in-name" value="${esc(inno.name)}"></div>
@@ -476,6 +477,7 @@ function openEditInno(id){
       <div class="form-row"><label>Category</label><select id="in-cat">${catOpts}</select></div>
       <div class="form-row"><label>UPSA owner</label><select id="in-resp">${respOpts}</select></div>
     </div>
+    <div class="form-row"><label>Color</label><div class="phase-colors">${swatches}</div><input type="hidden" id="in-color" value="${inno.color}"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveEditInno('${id}')">Save</button>
@@ -487,6 +489,7 @@ function saveEditInno(id){
   inno.name=document.getElementById('in-name').value.trim()||inno.name;
   inno.category=document.getElementById('in-cat').value;
   inno.resp=document.getElementById('in-resp').value;
+  inno.color=document.getElementById('in-color').value||inno.color;
   save(); closeModal(); renderInnoList(); renderDetail(); notify('Saved ✓');
 }
 
