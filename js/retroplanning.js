@@ -93,6 +93,7 @@ function showPage(p, btn){
   btn.classList.add('active');
   if(p==='global') renderGlobal();
   if(p==='settings') renderSettings();
+  if(p==='notes') renderNotes();
 }
 
 // ─── INNOVATION LIST ─────────────────────────────────────────────────────────

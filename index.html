@@ -70,6 +70,7 @@
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showPage('detail',this)">Retroplanning</button>
       <button class="nav-tab" onclick="showPage('global',this)">Overview</button>
+      <button class="nav-tab" onclick="showPage('notes',this)">📝 Notes</button>
       <button class="nav-tab admin-only" onclick="showPage('settings',this)">⚙ Settings</button>
     </div>
     <div class="nav-actions">
@@ -120,6 +121,11 @@
   <!-- SETTINGS PAGE -->
   <div class="page" id="page-settings">
     <div id="settings-content" style="padding-bottom:40px"></div>
+  </div>
+
+  <!-- NOTES PAGE -->
+  <div class="page" id="page-notes">
+    <div id="notes-content" style="max-width:860px;margin:0 auto;padding-bottom:60px"></div>
   </div>
 
 </div><!-- end #app -->
@@ -192,5 +198,6 @@
   }
 })();
 </script>
+<script src="js/notes.js"></script>
 </body>
 </html>
