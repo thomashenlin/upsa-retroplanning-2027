@@ -25,7 +25,7 @@ function renderGlobal(){
   const launchBar = launchItems.length ? `
     <div id="launch-summary" style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;background:var(--s1);border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:thin">
       ${launchItems.map(({inno,end,late})=>`
-        <div style="display:flex;align-items:center;gap:6px;background:var(--s0);border:1px solid ${late?'var(--err)':'var(--bd)'};border-radius:8px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0" onclick="selectAndGoDetail('${inno.id}')">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--s0);border:1px solid ${late?'var(--err)':'var(--bd)'};border-radius:8px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0" onclick="filterGanttToInno('${inno.id}')">
           <div style="width:8px;height:8px;border-radius:50%;background:${inno.color}"></div>
           <span style="font-size:12px;font-weight:600;color:var(--tx)">${esc(inno.name)}</span>
           <span style="font-size:11px;color:${late?'var(--err)':'var(--tx3)'}">${late?'⚠ ':''} ${fmtDate(end)}</span>
@@ -42,15 +42,21 @@ function renderGlobal(){
   });
   const cats=order.filter(c=>grouped[c]);
 
-  // Active filter (stored on element)
-  const prevFilter = document.getElementById('gantt-cat-filter')?.value || 'all';
+  // Active filter (stored on element or pending from launch bar click)
+  const ganttEl = document.getElementById('globalGantt');
+  const pendingFilter = ganttEl?.dataset.pendingFilter;
+  if(pendingFilter) delete ganttEl.dataset.pendingFilter;
+  const prevFilter = pendingFilter || document.getElementById('gantt-cat-filter')?.value || 'all';
 
   const filterBar = `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--bd);background:var(--s0);flex-wrap:wrap">
       <span style="font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em">Filter:</span>
       <select id="gantt-cat-filter" onchange="renderGlobal()" style="font-size:12px;padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-family:inherit;background:var(--s0);color:var(--tx);cursor:pointer">
-        <option value="all" ${prevFilter==='all'?'selected':''}>All categories</option>
-        ${cats.map(c=>`<option value="${esc(c)}" ${prevFilter===c?'selected':''}>${esc(c)} (${grouped[c].length})</option>`).join('')}
+        <option value="all" ${prevFilter==='all'?'selected':''}>All</option>
+        ${cats.map(c=>`<option value="cat:${esc(c)}" ${prevFilter==='cat:'+c?'selected':''}>${esc(c)} (${grouped[c].length})</option>`).join('')}
+        <optgroup label="Single innovation">
+        ${S.innovations.map(i=>`<option value="inno:${i.id}" ${prevFilter==='inno:'+i.id?'selected':''}>${esc(i.name)}</option>`).join('')}
+        </optgroup>
       </select>
       <div id="gantt-nav" style="display:flex;align-items:center;gap:8px;flex:1;margin-left:16px;min-width:0">
         <button class="btn btn-sm btn-ghost" onclick="ganttScroll(-4)" style="flex-shrink:0" title="4 weeks left">◀</button>
@@ -64,8 +70,18 @@ function renderGlobal(){
 
   // Active filter value
   const activeFilter = prevFilter;
-  const visibleCats = activeFilter==='all' ? cats : cats.filter(c=>c===activeFilter);
-  const visibleInnovations = visibleCats.flatMap(c=>grouped[c]);
+  let visibleInnovations;
+  if(activeFilter==='all'){
+    visibleInnovations = cats.flatMap(c=>grouped[c]);
+  } else if(activeFilter.startsWith('inno:')){
+    const innoId = activeFilter.slice(5);
+    visibleInnovations = S.innovations.filter(i=>i.id===innoId);
+  } else {
+    const cat = activeFilter.startsWith('cat:') ? activeFilter.slice(4) : activeFilter;
+    visibleInnovations = (grouped[cat]||[]);
+  }
+  // Recompute visibleCats from visibleInnovations
+  const visibleCats = [...new Set(visibleInnovations.map(i=>CATEGORY_LIST.includes(i.category)?i.category:'Other'))].filter(c=>cats.includes(c));
 
   // ── DATE RANGE ──
   const allDates=[];
@@ -296,6 +312,25 @@ function ganttScrollTrackClick(e){
   const pct=(e.clientX-rect.left)/rect.width;
   wrap.scrollLeft=pct*(wrap.scrollWidth-wrap.clientWidth);
   updateGanttThumb(wrap);
+}
+
+function filterGanttToInno(innoId){
+  // Set the filter dropdown to this specific innovation and re-render
+  const sel = document.getElementById('gantt-cat-filter');
+  if(sel){
+    // Find or create the option
+    const opt = [...sel.options].find(o=>o.value==='inno:'+innoId);
+    if(opt) opt.selected = true;
+    else {
+      // Store as data attr for next render
+      const container = document.getElementById('globalGantt');
+      if(container) container.dataset.pendingFilter = 'inno:'+innoId;
+    }
+  }
+  // Store pending filter in DOM for renderGlobal to pick up
+  const gantt = document.getElementById('globalGantt');
+  if(gantt) gantt.dataset.pendingFilter = 'inno:'+innoId;
+  renderGlobal();
 }
 
 function selectAndGoDetail(id){
