@@ -185,6 +185,12 @@ function renderDetail(){
       <div class="anchor-date-row">
         <span style="font-size:12px;color:var(--tx2);font-weight:500">${isBackward?'Target launch date':'Start date'}</span>
         <input class="anchor-input" type="date" value="${inno.anchorDate||''}" onchange="setAnchor('${inno.id}',this.value)">
+        <span style="font-size:12px;color:var(--tx2);font-weight:500;margin-left:16px">Forecast in SAP</span>
+        <select onchange="setSapForecast('${inno.id}',this.value)" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-family:inherit;background:${inno.sapForecast==='yes'?'var(--ok-bg)':inno.sapForecast==='no'?'var(--err-bg)':'var(--s0)'};color:${inno.sapForecast==='yes'?'var(--ok)':inno.sapForecast==='no'?'var(--err)':'var(--tx2)'};font-weight:500;cursor:pointer">
+          <option value="" ${!inno.sapForecast?'selected':''}>— Select —</option>
+          <option value="yes" ${inno.sapForecast==='yes'?'selected':''}>✓ Yes</option>
+          <option value="no" ${inno.sapForecast==='no'?'selected':''}>✗ No</option>
+        </select>
       </div>
       <div class="anchor-result">
         ${isBackward
@@ -295,6 +301,7 @@ function renderPhaseBlock(inno, ph, pi, dates, pr){
 // ─── MUTATIONS ────────────────────────────────────────────────────────────────
 function setMode(innoId, mode){ const inno=S.innovations.find(i=>i.id===innoId); inno.mode=mode; save(); renderDetail(); }
 function setAnchor(innoId, val){ const inno=S.innovations.find(i=>i.id===innoId); inno.anchorDate=val; save(); renderDetail(); }
+function setSapForecast(innoId, val){ const inno=S.innovations.find(i=>i.id===innoId); inno.sapForecast=val; save(); renderDetail(); }
 function togglePhase(innoId, phId){ const inno=S.innovations.find(i=>i.id===innoId); const ph=inno.phases.find(p=>p.id===phId); ph.collapsed=!ph.collapsed; save(); renderDetail(); }
 function updateStep(innoId, phId, stepId, field, val){
   const inno=S.innovations.find(i=>i.id===innoId);
