@@ -166,7 +166,7 @@ function renderGlobal(){
   }
 
   visibleCats.forEach(cat=>{
-    const catInno=grouped[cat];
+    const catInno=visibleInnovations.filter(i=>(CATEGORY_LIST.includes(i.category)?i.category:'Other')===cat);
     const catLate=catInno.filter(innoHasLateStep).length;
     // Category header
     addRow(
