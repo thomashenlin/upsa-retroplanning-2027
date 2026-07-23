@@ -2,8 +2,8 @@
 
 async function loadSmcSettings() {
   try {
-    const { data } = await supa.from('swissmedic_settings').select('procedures').eq('id','default').single();
-    if (data?.procedures) {
+    const { data, error } = await supa.from('swissmedic_settings').select('procedures').eq('id','default').maybeSingle();
+    if (!error && data?.procedures) {
       // Merge saved durations into SMC_PROCEDURES
       Object.entries(data.procedures).forEach(([key, saved]) => {
         if (SMC_PROCEDURES[key] && saved.steps) {

@@ -221,6 +221,7 @@ function renderGlobal(){
               <div style="width:3px;height:12px;border-radius:2px;background:${ph.color};flex-shrink:0"></div>
               <span style="font-size:11px;font-weight:500;color:${late?'var(--err)':'var(--tx2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1" title="${esc(step.name)}">${pinnedIcon}${esc(step.name)}</span>
               <select class="${late?'status-late':sm.cls}"
+                data-step-id="${step.id}"
                 style="font-size:10px;padding:2px 5px;border-radius:99px;border:1px solid;flex-shrink:0;white-space:nowrap;cursor:pointer;font-family:inherit;font-weight:500;-webkit-appearance:none;appearance:none;background:transparent"
                 onchange="quickUpdateStatus('${inno.id}','${ph.id}','${step.id}',this.value);event.stopPropagation()"
                 onclick="event.stopPropagation()">
@@ -325,8 +326,6 @@ function ganttScrollTrackClick(e){
 }
 
 function filterGanttToInno(innoId){
-  console.log('[filter] filterGanttToInno called with:', innoId);
-  console.log('[filter] matching innovation:', S.innovations.find(i=>i.id===innoId)?.name || 'NOT FOUND');
   _ganttFilter = 'inno:' + innoId;
   renderGlobal();
 }
@@ -415,8 +414,9 @@ function quickUpdateStatus(innoId, phId, stepId, newStatus) {
   logChange(innoId, inno.name, 'STATUS_CHANGED', step.name, oldStatus, newStatus);
   save();
   renderInnoList();
-  // Re-render global to update late flags without full page reload
-  renderGlobal();
+  // Update just the status badge in the current row without full re-render
+  const sel = document.querySelector(`[data-step-id="${stepId}"]`);
+  if(sel){ sel.className = statusMeta(newStatus).cls; }
 }
 
 function syncGanttScroll(rightEl) {
