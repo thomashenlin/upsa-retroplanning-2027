@@ -1,4 +1,6 @@
 // ─── OVERVIEW + PDF + INIT ───────────────────────────────────────────────────
+let _ganttFilter = 'all';
+
 function renderGlobal(){
   const total=S.innovations.length;
   const lateCount=S.innovations.filter(innoHasLateStep).length;
@@ -42,16 +44,12 @@ function renderGlobal(){
   });
   const cats=order.filter(c=>grouped[c]);
 
-  // Active filter (stored on element or pending from launch bar click)
-  const ganttEl = document.getElementById('globalGantt');
-  const pendingFilter = ganttEl?.dataset.pendingFilter;
-  if(pendingFilter) delete ganttEl.dataset.pendingFilter;
-  const prevFilter = pendingFilter || document.getElementById('gantt-cat-filter')?.value || 'all';
+  const prevFilter = _ganttFilter;
 
   const filterBar = `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--bd);background:var(--s0);flex-wrap:wrap">
       <span style="font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em">Filter:</span>
-      <select id="gantt-cat-filter" onchange="renderGlobal()" style="font-size:12px;padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-family:inherit;background:var(--s0);color:var(--tx);cursor:pointer">
+      <select id="gantt-cat-filter" onchange="_ganttFilter=this.value;renderGlobal()" style="font-size:12px;padding:4px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-family:inherit;background:var(--s0);color:var(--tx);cursor:pointer">
         <option value="all" ${prevFilter==='all'?'selected':''}>All</option>
         ${cats.map(c=>`<option value="cat:${esc(c)}" ${prevFilter==='cat:'+c?'selected':''}>${esc(c)} (${grouped[c].length})</option>`).join('')}
         <optgroup label="Single innovation">
@@ -315,21 +313,7 @@ function ganttScrollTrackClick(e){
 }
 
 function filterGanttToInno(innoId){
-  // Set the filter dropdown to this specific innovation and re-render
-  const sel = document.getElementById('gantt-cat-filter');
-  if(sel){
-    // Find or create the option
-    const opt = [...sel.options].find(o=>o.value==='inno:'+innoId);
-    if(opt) opt.selected = true;
-    else {
-      // Store as data attr for next render
-      const container = document.getElementById('globalGantt');
-      if(container) container.dataset.pendingFilter = 'inno:'+innoId;
-    }
-  }
-  // Store pending filter in DOM for renderGlobal to pick up
-  const gantt = document.getElementById('globalGantt');
-  if(gantt) gantt.dataset.pendingFilter = 'inno:'+innoId;
+  _ganttFilter = 'inno:' + innoId;
   renderGlobal();
 }
 
