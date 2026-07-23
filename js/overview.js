@@ -260,24 +260,19 @@ function renderGlobal(){
     </div>
   </div>`;
 
-  document.getElementById('globalGantt').innerHTML=ganttHtml;
+  const ganttEl2 = document.getElementById('globalGantt');
+  ganttEl2.innerHTML = ganttHtml;
 
-  // Event delegation for launch bar chips
-  const launchSummary = document.getElementById('launch-summary');
-  if(launchSummary){
-    launchSummary.addEventListener('click', e=>{
-      const chip = e.target.closest('[data-inno-filter]');
-      if(chip) filterGanttToInno(chip.dataset.innoFilter);
-    });
-  }
-  // Event delegation for innovation name rows -> go to detail
-  const ganttLeftScroll = document.getElementById('gantt-left-scroll');
-  if(ganttLeftScroll){
-    ganttLeftScroll.addEventListener('click', e=>{
-      const row = e.target.closest('[data-goto-inno]');
-      if(row) selectAndGoDetail(row.dataset.gotoInno);
-    });
-  }
+  // Single event delegation on the container — handles all chip and row clicks
+  ganttEl2.addEventListener('click', e=>{
+    const chip = e.target.closest('[data-inno-filter]');
+    if(chip){
+      filterGanttToInno(chip.dataset.innoFilter);
+      return;
+    }
+    const row = e.target.closest('[data-goto-inno]');
+    if(row) selectAndGoDetail(row.dataset.gotoInno);
+  });
 
   requestAnimationFrame(()=>ganttScrollToToday());
 }
@@ -330,6 +325,8 @@ function ganttScrollTrackClick(e){
 }
 
 function filterGanttToInno(innoId){
+  console.log('[filter] filterGanttToInno called with:', innoId);
+  console.log('[filter] matching innovation:', S.innovations.find(i=>i.id===innoId)?.name || 'NOT FOUND');
   _ganttFilter = 'inno:' + innoId;
   renderGlobal();
 }
