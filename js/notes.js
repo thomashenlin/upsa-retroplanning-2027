@@ -75,6 +75,7 @@ function renderNotes() {
         <div style="font-size:15px;font-weight:600;color:var(--tx)">${noteTitle}</div>
         <div style="display:flex;align-items:center;gap:12px">
           <span id="note-wordcount" style="font-size:11px;color:var(--tx3)">${wordCount ? wordCount+' words' : ''}</span>
+          <button onclick="insertNoteDate()" style="font-size:11px;padding:3px 10px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--s1);color:var(--tx2);cursor:pointer;font-family:inherit">📅 Insert date</button>
           <span id="note-save-status" style="font-size:11px;color:var(--tx3)"></span>
         </div>
       </div>
@@ -127,4 +128,31 @@ function onNoteInput(id, value) {
     const el = document.getElementById('note-save-status');
     if (el) { el.textContent = 'Saved ✓'; setTimeout(() => { if(el) el.textContent = ''; }, 2000); }
   }, 1500);
+}
+
+function insertNoteDate() {
+  const ed = document.getElementById('note-editor');
+  if (!ed) return;
+
+  // Format: "── 23 Jul 2026 ──────────────────\n"
+  const now = new Date();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateStr = `\n── ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} ─────────────────────────\n`;
+
+  // Insert at cursor position
+  const start = ed.selectionStart;
+  const end = ed.selectionEnd;
+  const before = ed.value.slice(0, start);
+  const after = ed.value.slice(end);
+  ed.value = before + dateStr + after;
+
+  // Move cursor after the inserted date
+  const newPos = start + dateStr.length;
+  ed.setSelectionRange(newPos, newPos);
+  ed.focus();
+
+  // Trigger save
+  const container = document.getElementById('notes-content');
+  const activeNoteId = container?.dataset.activeNote || 'global';
+  onNoteInput(activeNoteId, ed.value);
 }
